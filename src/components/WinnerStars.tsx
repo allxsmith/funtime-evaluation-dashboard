@@ -28,15 +28,15 @@ export function WinnerStars({
         />
         <div className="relative">
           <Star
-            className="w-36 h-36 text-amber-400 drop-shadow-2xl"
+            className="w-56 h-56 sm:w-64 sm:h-64 text-amber-400 drop-shadow-2xl"
             fill="currentColor"
             strokeWidth={1.5}
           />
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-900 px-5">
-            <div className="text-[10px] font-extrabold uppercase tracking-widest opacity-70">
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-900 px-8">
+            <div className="text-xs font-extrabold uppercase tracking-widest opacity-70">
               Winner
             </div>
-            <div className="text-sm font-extrabold leading-tight">
+            <div className="text-base sm:text-lg font-extrabold leading-tight max-w-[160px] text-balance">
               {winnerName}
             </div>
           </div>
@@ -62,15 +62,15 @@ export function WinnerStars({
         >
           <div className="relative">
             <Star
-              className="w-28 h-28 text-slate-400 dark:text-slate-500 drop-shadow-xl"
+              className="w-44 h-44 sm:w-48 sm:h-48 text-slate-400 dark:text-slate-500 drop-shadow-xl"
               fill="currentColor"
               strokeWidth={1.5}
             />
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-900 px-3">
-              <div className="text-[9px] font-extrabold uppercase tracking-widest opacity-70">
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-900 px-6">
+              <div className="text-[10px] font-extrabold uppercase tracking-widest opacity-70">
                 Runner up
               </div>
-              <div className="text-xs font-extrabold leading-tight">
+              <div className="text-sm font-extrabold leading-tight max-w-[120px] text-balance">
                 {runnerUpName}
               </div>
             </div>
