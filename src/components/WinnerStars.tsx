@@ -28,15 +28,15 @@ export function WinnerStars({
         />
         <div className="relative">
           <Star
-            className="w-56 h-56 sm:w-64 sm:h-64 text-amber-400 drop-shadow-2xl"
+            className="w-64 h-64 sm:w-72 sm:h-72 text-amber-400 drop-shadow-2xl"
             fill="currentColor"
             strokeWidth={1.5}
           />
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-900 px-8">
-            <div className="text-xs font-extrabold uppercase tracking-widest opacity-70">
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-900 px-10">
+            <div className="text-xs sm:text-sm font-extrabold uppercase tracking-widest opacity-70">
               Winner
             </div>
-            <div className="text-base sm:text-lg font-extrabold leading-tight max-w-[160px] text-balance">
+            <div className="text-lg sm:text-xl font-extrabold leading-tight max-w-[180px] text-balance">
               {winnerName}
             </div>
           </div>
@@ -51,7 +51,7 @@ export function WinnerStars({
       {runnerUpName && (
         <motion.div
           initial={{ scale: 0, rotate: 180 }}
-          animate={{ scale: 0.85, rotate: 0 }}
+          animate={{ scale: 1, rotate: 0 }}
           transition={{
             type: "spring",
             stiffness: 220,
@@ -62,15 +62,15 @@ export function WinnerStars({
         >
           <div className="relative">
             <Star
-              className="w-44 h-44 sm:w-48 sm:h-48 text-slate-400 dark:text-slate-500 drop-shadow-xl"
+              className="w-56 h-56 sm:w-60 sm:h-60 text-slate-400 dark:text-slate-500 drop-shadow-xl"
               fill="currentColor"
               strokeWidth={1.5}
             />
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-900 px-6">
-              <div className="text-[10px] font-extrabold uppercase tracking-widest opacity-70">
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-900 px-8">
+              <div className="text-xs font-extrabold uppercase tracking-widest opacity-70">
                 Runner up
               </div>
-              <div className="text-sm font-extrabold leading-tight max-w-[120px] text-balance">
+              <div className="text-base sm:text-lg font-extrabold leading-tight max-w-[150px] text-balance">
                 {runnerUpName}
               </div>
             </div>
