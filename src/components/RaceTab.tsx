@@ -166,7 +166,7 @@ export function RaceTab() {
   return (
     <div className="space-y-5">
       {/* Top summary header */}
-      <div className="rounded-3xl bg-white dark:bg-slate-900 shadow-md p-4 flex flex-wrap items-center gap-3">
+      <div className="rounded-3xl bg-white dark:bg-slate-800 dark:ring-1 dark:ring-slate-700 shadow-md p-4 flex flex-wrap items-center gap-3">
         <h2 className="text-xl font-extrabold text-slate-800 dark:text-slate-100">
           🐎 The Race — {mode === "raw" ? "Raw" : "Weighted"} Scores
         </h2>
@@ -236,10 +236,18 @@ export function RaceTab() {
             {/* Carnival striped header (per track) */}
             <div className="relative">
               <div
-                className="absolute inset-0"
+                className="absolute inset-0 dark:hidden"
                 style={{
                   backgroundImage:
                     "repeating-linear-gradient(135deg, #dc2626 0 30px, #fbbf24 30px 60px)",
+                }}
+                aria-hidden
+              />
+              <div
+                className="absolute inset-0 hidden dark:block"
+                style={{
+                  backgroundImage:
+                    "repeating-linear-gradient(135deg, #7f1d1d 0 30px, #92400e 30px 60px)",
                 }}
                 aria-hidden
               />
@@ -265,7 +273,7 @@ export function RaceTab() {
                   />
                 ))}
               </div>
-              <div className="relative bg-black/45 text-white p-4 pt-5 flex flex-wrap items-center gap-3">
+              <div className="relative bg-black/45 dark:bg-black/65 text-white p-4 pt-5 flex flex-wrap items-center gap-3">
                 <div className="min-w-0">
                   <h3 className="text-xl font-extrabold drop-shadow">
                     🎪 {track.name}
@@ -337,7 +345,7 @@ export function RaceTab() {
             </div>
 
             {/* Lanes */}
-            <div className="bg-white dark:bg-slate-900 p-5">
+            <div className="bg-white dark:bg-slate-800 p-5 dark:ring-1 dark:ring-slate-700">
               <div className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">
                 {revealedN}/{track.sectionIds.length} sections revealed
               </div>
