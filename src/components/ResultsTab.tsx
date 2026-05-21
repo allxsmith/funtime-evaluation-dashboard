@@ -35,6 +35,10 @@ export function ResultsTab() {
     [items],
   );
   const [openPicks, setOpenPicks] = useState<Record<string, boolean>>({});
+  const [winnerBy, setWinnerBy] = useState<Record<string, "raw" | "weighted">>(
+    {},
+  );
+  const winnerModeFor = (trackId: string) => winnerBy[trackId] ?? "weighted";
 
   useEffect(() => {
     bigCelebrate();
@@ -47,42 +51,107 @@ export function ResultsTab() {
         const trackSections = track.sectionIds
           .map((id) => sectionsById[id])
           .filter(Boolean);
-        const scored = trackItems
-          .map((item) => ({
+        const scoredAll = trackItems.map((item) => ({
+          item,
+          raw: rawTotal(scores, item, track.sectionIds),
+          weighted: weightedTotal(
+            scores,
             item,
-            raw: rawTotal(scores, item, track.sectionIds),
-            weighted: weightedTotal(
-              scores,
-              item,
-              track.sectionIds,
-              sectionsById,
-            ),
-          }))
-          .sort((a, b) => b.weighted - a.weighted);
-        const winner = scored[0];
-        const runnerUp = scored[1];
+            track.sectionIds,
+            sectionsById,
+          ),
+        }));
         const maxRaw = rawMax(track.sectionIds);
         const maxWeighted = weightedMax(track.sectionIds, sectionsById);
+
+        const wMode = winnerModeFor(track.id);
+        const scored = [...scoredAll].sort((a, b) =>
+          wMode === "raw" ? b.raw - a.raw : b.weighted - a.weighted,
+        );
+        const winner = scored[0];
+        const runnerUp = scored[1];
+
+        // Highlight "winners differ!" when raw and weighted disagree.
+        const rawWinner = [...scoredAll].sort((a, b) => b.raw - a.raw)[0];
+        const weightedWinner = [...scoredAll].sort(
+          (a, b) => b.weighted - a.weighted,
+        )[0];
+        const winnersDiffer =
+          rawWinner &&
+          weightedWinner &&
+          rawWinner.raw > 0 &&
+          weightedWinner.weighted > 0 &&
+          rawWinner.item.id !== weightedWinner.item.id;
+
+        const winnerScore =
+          wMode === "raw"
+            ? `${winner?.raw ?? 0} / ${maxRaw} raw`
+            : `${winner?.weighted.toFixed(1) ?? 0} / ${maxWeighted.toFixed(1)} weighted`;
+        const runnerUpScore = runnerUp
+          ? wMode === "raw"
+            ? `${runnerUp.raw} raw`
+            : `${runnerUp.weighted.toFixed(1)} weighted`
+          : undefined;
+        const hasResults =
+          winner && (wMode === "raw" ? winner.raw > 0 : winner.weighted > 0);
 
         return (
           <section
             key={track.id}
             className="rounded-3xl bg-white dark:bg-slate-900 shadow-md p-5 sm:p-6"
           >
-            <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 mb-2">
-              {track.name}
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+              <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100">
+                {track.name}
+              </h2>
+              <div className="inline-flex items-center gap-2">
+                {winnersDiffer && (
+                  <span
+                    className="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300"
+                    title="Raw and weighted scores produced different winners!"
+                  >
+                    Winners differ ⚡
+                  </span>
+                )}
+                <div
+                  role="group"
+                  aria-label="Winner scoring method"
+                  className="inline-flex rounded-full bg-slate-100 dark:bg-slate-800 p-0.5 text-xs font-semibold"
+                >
+                  <button
+                    onClick={() =>
+                      setWinnerBy((p) => ({ ...p, [track.id]: "raw" }))
+                    }
+                    className={
+                      wMode === "raw"
+                        ? "rounded-full px-3 py-1 bg-white dark:bg-slate-700 shadow text-slate-900 dark:text-slate-50"
+                        : "rounded-full px-3 py-1 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                    }
+                  >
+                    Raw winner
+                  </button>
+                  <button
+                    onClick={() =>
+                      setWinnerBy((p) => ({ ...p, [track.id]: "weighted" }))
+                    }
+                    className={
+                      wMode === "weighted"
+                        ? "rounded-full px-3 py-1 bg-white dark:bg-slate-700 shadow text-slate-900 dark:text-slate-50"
+                        : "rounded-full px-3 py-1 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                    }
+                  >
+                    Weighted winner
+                  </button>
+                </div>
+              </div>
+            </div>
 
-            {winner && winner.weighted > 0 ? (
+            {hasResults ? (
               <WinnerStars
                 winnerName={winner.item.name}
-                winnerSubtitle={`${winner.weighted.toFixed(1)} / ${maxWeighted.toFixed(1)} weighted`}
+                winnerSubtitle={winnerScore}
                 runnerUpName={runnerUp?.item.name}
-                runnerUpSubtitle={
-                  runnerUp
-                    ? `${runnerUp.weighted.toFixed(1)} weighted`
-                    : undefined
-                }
+                runnerUpSubtitle={runnerUpScore}
               />
             ) : (
               <p className="text-slate-500 dark:text-slate-400 italic py-4">
@@ -90,12 +159,13 @@ export function ResultsTab() {
               </p>
             )}
 
-            {winner && winner.weighted > 0 && (
+            {hasResults && (
               <BettorsCallout
                 trackId={track.id}
                 trackName={track.name}
                 winnerItemId={winner.item.id}
                 winnerItemName={winner.item.name}
+                winnerMode={wMode}
                 attendees={attendees}
                 bets={bets}
                 itemById={itemById}
@@ -195,6 +265,7 @@ function BettorsCallout({
   trackName,
   winnerItemId,
   winnerItemName,
+  winnerMode,
   attendees,
   bets,
   itemById,
@@ -205,6 +276,7 @@ function BettorsCallout({
   trackName: string;
   winnerItemId: string;
   winnerItemName: string;
+  winnerMode: "raw" | "weighted";
   attendees: { id: string; name: string; color: string }[];
   bets: Record<string, Record<string, string>>;
   itemById: Record<string, { id: string; name: string }>;
@@ -229,7 +301,7 @@ function BettorsCallout({
           Winning Bettors
         </span>
         <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
-          picked <strong>{winnerItemName}</strong>
+          picked <strong>{winnerItemName}</strong> (by {winnerMode})
         </span>
       </div>
 
