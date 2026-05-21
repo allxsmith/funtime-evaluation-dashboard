@@ -86,99 +86,106 @@ export function HorseTrack({
 }
 
 function HorseHead({ harnessColor }: { harnessColor: string }) {
-  // Sideways horse head + neck, facing right.
-  // viewBox 120 x 80; head is on the right, neck drops down-left.
+  // Sideways horse head + neck facing right, drawn as a single unified
+  // silhouette path so there are no seams between head / muzzle / neck.
   return (
     <svg
-      viewBox="0 0 120 80"
-      className="w-[92px] h-[60px] sm:w-[108px] sm:h-[72px] drop-shadow-md text-slate-800 dark:text-slate-100"
+      viewBox="0 0 140 80"
+      className="w-[100px] h-[58px] sm:w-[120px] sm:h-[70px] drop-shadow-md text-slate-800 dark:text-slate-100"
       aria-label="horse"
       role="img"
     >
-      {/* Main silhouette: neck rises from bottom-left, curves up to crest,
-          arches over crown, drops down forehead to a long muzzle on the right,
-          tucks back under the jaw and throat down to the neck base. */}
+      {/* Outline: bottom-left → up back of neck → over crest → up to ear tip →
+          down ear front → across forehead → forward to muzzle → around muzzle
+          tip → back under chin → up to throat → down front of neck →
+          bottom-right → close. */}
       <path
         d="
-          M 14 78
-          C 14 60, 18 44, 28 32
-          C 36 22, 48 16, 60 14
-          L 64 6
-          L 72 14
-          C 86 16, 96 24, 104 36
-          C 110 44, 114 48, 116 54
-          L 110 62
-          C 106 66, 98 66, 92 62
-          L 84 58
-          C 76 56, 72 50, 70 44
-          C 64 46, 56 50, 48 56
-          C 40 62, 34 70, 30 78
+          M 10 78
+          C 8 60, 14 42, 28 30
+          C 38 22, 48 18, 56 16
+          L 58 4
+          L 64 14
+          C 76 12, 88 16, 100 28
+          C 110 36, 120 42, 128 50
+          C 132 56, 128 62, 120 64
+          C 112 66, 104 64, 96 60
+          L 88 58
+          C 84 56, 80 52, 78 46
+          C 72 44, 66 44, 60 46
+          C 52 48, 44 54, 36 62
+          L 28 78
           Z
         "
         fill="currentColor"
       />
-      {/* Mane: hair falling along the back of the neck */}
+
+      {/* Mane: separate semi-transparent overlay flowing along the back of the
+          neck. Gives texture without breaking the silhouette. */}
       <path
         d="
-          M 60 14
-          C 50 18, 42 26, 36 36
-          C 30 48, 26 60, 24 78
-          L 14 78
-          C 14 60, 18 44, 28 32
-          C 36 22, 48 16, 60 14
+          M 28 30
+          C 22 44, 16 60, 14 78
+          L 4 78
+          C 4 58, 12 36, 24 22
           Z
         "
         fill="currentColor"
-        opacity="0.55"
+        opacity="0.45"
       />
+
       {/* Inner ear highlight */}
-      <path d="M 66 12 L 69 6 L 70 13 Z" fill="currentColor" opacity="0.5" />
+      <path d="M 60 10 L 60 16 L 64 16 Z" fill="#ffffff" opacity="0.25" />
+
       {/* Eye */}
-      <circle cx="86" cy="32" r="2" fill="#ffffff" />
-      <circle cx="86" cy="32" r="1.1" fill="#0f172a" />
+      <circle cx="90" cy="28" r="2.4" fill="#ffffff" />
+      <circle cx="90" cy="28" r="1.3" fill="#0f172a" />
+
       {/* Nostril */}
       <ellipse
-        cx="108"
-        cy="52"
-        rx="1.8"
-        ry="1.2"
+        cx="118"
+        cy="56"
+        rx="2"
+        ry="1.4"
         fill="#0f172a"
         opacity="0.6"
       />
+
       {/* Mouth line */}
       <path
-        d="M 102 60 Q 108 60 112 58"
+        d="M 108 61 Q 116 62 122 60"
         stroke="#0f172a"
-        strokeWidth="0.8"
+        strokeWidth="0.9"
         fill="none"
-        opacity="0.4"
+        opacity="0.45"
         strokeLinecap="round"
       />
 
-      {/* Harness noseband — wraps around the muzzle just above the nostril */}
+      {/* HARNESS */}
+      {/* Solid colored noseband wrapping around the muzzle */}
       <path
         d="
-          M 92 44
-          C 100 42, 108 44, 116 48
-          L 114 54
-          C 106 51, 99 51, 92 52
+          M 94 46
+          L 124 52
+          L 122 60
+          L 94 56
           Z
         "
         fill={harnessColor}
       />
-      {/* Cheek strap from noseband up toward crown */}
+      {/* Cheek strap from noseband up the side of the head */}
       <path
-        d="M 90 28 Q 92 38 94 46"
+        d="M 88 24 Q 92 38 98 50"
         stroke={harnessColor}
-        strokeWidth="3"
+        strokeWidth="3.5"
         fill="none"
         strokeLinecap="round"
       />
-      {/* Crownpiece over the top of the head behind the ears */}
+      {/* Crown piece across the top of the head, behind the ear */}
       <path
-        d="M 72 14 Q 84 18 90 28"
+        d="M 66 14 Q 82 18 88 24"
         stroke={harnessColor}
-        strokeWidth="3"
+        strokeWidth="3.5"
         fill="none"
         strokeLinecap="round"
       />
