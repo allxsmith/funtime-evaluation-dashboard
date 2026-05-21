@@ -70,8 +70,8 @@ export type SessionState = {
   presentedEvaluatorIds: ID[];
   currentPresenterId: ID | null;
   raceMode: RaceMode | null;
-  rawRevealedSectionIndex: number;
-  weightedRevealedSectionIndex: number;
+  rawRevealedByTrack: Record<ID, number>;
+  weightedRevealedByTrack: Record<ID, number>;
 };
 
 export const scoreKey = (itemId: ID, sectionId: ID): ScoreKey =>

@@ -318,8 +318,9 @@ type SessionActions = {
   setCurrentPresenter: (evaluatorId: ID | null) => void;
   resetSpinSession: () => void;
   setRaceMode: (m: RaceMode | null) => void;
-  revealNextSection: (mode: RaceMode, max: number) => void;
-  revealAllSections: (mode: RaceMode, max: number) => void;
+  revealNextSection: (mode: RaceMode, trackId: ID, max: number) => void;
+  revealAllSections: (mode: RaceMode, trackId: ID, max: number) => void;
+  resetRaceTrack: (mode: RaceMode, trackId: ID) => void;
   resetRaceMode: (mode: RaceMode) => void;
   resetRace: () => void;
 };
@@ -331,8 +332,8 @@ export const useSessionStore = create<SessionState & SessionActions>((set) => ({
   presentedEvaluatorIds: [],
   currentPresenterId: null,
   raceMode: null,
-  rawRevealedSectionIndex: 0,
-  weightedRevealedSectionIndex: 0,
+  rawRevealedByTrack: {},
+  weightedRevealedByTrack: {},
 
   setHasEnteredApp: (v) => set({ hasEnteredApp: v }),
   setActiveTab: (t) => set({ activeTab: t }),
@@ -346,30 +347,37 @@ export const useSessionStore = create<SessionState & SessionActions>((set) => ({
   resetSpinSession: () =>
     set({ presentedEvaluatorIds: [], currentPresenterId: null }),
   setRaceMode: (m) => set({ raceMode: m }),
-  revealNextSection: (mode, max) =>
+  revealNextSection: (mode, trackId, max) =>
     set((s) => {
       const key =
-        mode === "raw"
-          ? "rawRevealedSectionIndex"
-          : "weightedRevealedSectionIndex";
-      return { [key]: Math.min(s[key] + 1, max) };
+        mode === "raw" ? "rawRevealedByTrack" : "weightedRevealedByTrack";
+      const curr = s[key];
+      const next = Math.min((curr[trackId] ?? 0) + 1, max);
+      return { [key]: { ...curr, [trackId]: next } };
     }),
-  revealAllSections: (mode, max) =>
-    set(() =>
-      mode === "raw"
-        ? { rawRevealedSectionIndex: max }
-        : { weightedRevealedSectionIndex: max },
-    ),
+  revealAllSections: (mode, trackId, max) =>
+    set((s) => {
+      const key =
+        mode === "raw" ? "rawRevealedByTrack" : "weightedRevealedByTrack";
+      return { [key]: { ...s[key], [trackId]: max } };
+    }),
+  resetRaceTrack: (mode, trackId) =>
+    set((s) => {
+      const key =
+        mode === "raw" ? "rawRevealedByTrack" : "weightedRevealedByTrack";
+      const { [trackId]: _, ...rest } = s[key];
+      return { [key]: rest };
+    }),
   resetRaceMode: (mode) =>
     set(() =>
       mode === "raw"
-        ? { rawRevealedSectionIndex: 0 }
-        : { weightedRevealedSectionIndex: 0 },
+        ? { rawRevealedByTrack: {} }
+        : { weightedRevealedByTrack: {} },
     ),
   resetRace: () =>
     set({
       raceMode: null,
-      rawRevealedSectionIndex: 0,
-      weightedRevealedSectionIndex: 0,
+      rawRevealedByTrack: {},
+      weightedRevealedByTrack: {},
     }),
 }));
