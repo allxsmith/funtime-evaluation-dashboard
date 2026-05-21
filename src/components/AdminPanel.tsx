@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Tabs from "@radix-ui/react-tabs";
-import { Download, Plus, Trash2, Upload, X } from "lucide-react";
+import { ClipboardCopy, Download, Plus, Trash2, Upload, X } from "lucide-react";
 import {
   useEvaluationStore,
   useSessionStore,
@@ -275,9 +275,24 @@ function AttendeesSettings() {
     (s) => s.syncEvaluatorsToAttendees,
   );
   const [newName, setNewName] = useState("");
+  const [bulkText, setBulkText] = useState("");
+  const [bulkOpen, setBulkOpen] = useState(false);
 
-  const nextColor =
-    DEFAULT_PALETTE[attendees.length % DEFAULT_PALETTE.length];
+  const nextColor = (offset: number) =>
+    DEFAULT_PALETTE[(attendees.length + offset) % DEFAULT_PALETTE.length];
+
+  const handleBulkAdd = () => {
+    const existing = new Set(
+      attendees.map((a) => a.name.trim().toLowerCase()),
+    );
+    const names = bulkText
+      .split(/\r?\n|,/)
+      .map((n) => n.trim())
+      .filter((n) => n.length > 0 && !existing.has(n.toLowerCase()));
+    names.forEach((n, i) => addAttendee(n, nextColor(i)));
+    setBulkText("");
+    setBulkOpen(false);
+  };
 
   return (
     <div>
@@ -324,34 +339,82 @@ function AttendeesSettings() {
           </div>
         ))}
       </div>
-      <div className="flex flex-wrap gap-2">
-        <div className="flex gap-2 max-w-md flex-1 min-w-[260px]">
-          <input
-            className={inputCls}
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="New attendee name"
-          />
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 max-w-md flex-1 min-w-[260px]">
+            <input
+              className={inputCls}
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="New attendee name"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const n = newName.trim();
+                  if (!n) return;
+                  addAttendee(n, nextColor(0));
+                  setNewName("");
+                }
+              }}
+            />
+            <button
+              onClick={() => {
+                const n = newName.trim();
+                if (!n) return;
+                addAttendee(n, nextColor(0));
+                setNewName("");
+              }}
+              className={btnCls}
+            >
+              <Plus className="w-4 h-4" />
+              Add
+            </button>
+          </div>
           <button
-            onClick={() => {
-              const n = newName.trim();
-              if (!n) return;
-              addAttendee(n, nextColor);
-              setNewName("");
-            }}
-            className={btnCls}
+            onClick={() => setBulkOpen((v) => !v)}
+            className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-semibold px-3 py-1.5 transition"
           >
-            <Plus className="w-4 h-4" />
-            Add
+            {bulkOpen ? "Hide bulk add" : "Bulk add"}
+          </button>
+          <button
+            onClick={syncEvaluators}
+            className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-semibold px-3 py-1.5 transition"
+            title="Re-add any evaluators not currently in this list"
+          >
+            Sync evaluators
           </button>
         </div>
-        <button
-          onClick={syncEvaluators}
-          className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-semibold px-3 py-1.5 transition"
-          title="Re-add any evaluators not currently in this list"
-        >
-          Sync evaluators
-        </button>
+
+        {bulkOpen && (
+          <div className="space-y-2 max-w-xl">
+            <textarea
+              value={bulkText}
+              onChange={(e) => setBulkText(e.target.value)}
+              placeholder={
+                "Paste names — one per line or comma-separated\n\nExample:\nSam\nJamie\nAlex Smith"
+              }
+              className="w-full h-32 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm p-3 font-mono"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={handleBulkAdd}
+                className={btnCls}
+                disabled={!bulkText.trim()}
+              >
+                <Plus className="w-4 h-4" />
+                Add all
+              </button>
+              <button
+                onClick={() => setBulkText("")}
+                className="rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-semibold px-3 py-1.5 transition"
+              >
+                Clear
+              </button>
+              <span className="text-xs text-slate-500 dark:text-slate-400 self-center">
+                Duplicates (by name) are skipped.
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -756,8 +819,11 @@ function DataSettings() {
   const resetToDefaults = useEvaluationStore((s) => s.resetToDefaults);
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasted, setPasted] = useState("");
 
-  const handleExport = () => {
+  const currentJson = () => {
     const state = useEvaluationStore.getState();
     const data: PersistedState = {
       version: 1,
@@ -770,9 +836,11 @@ function DataSettings() {
       attendees: state.attendees,
       bets: state.bets,
     };
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
+    return JSON.stringify(data, null, 2);
+  };
+
+  const handleExport = () => {
+    const blob = new Blob([currentJson()], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -781,9 +849,21 @@ function DataSettings() {
     URL.revokeObjectURL(url);
   };
 
-  const handleImport = async (file: File) => {
+  const handleCopy = async () => {
     try {
-      const text = await file.text();
+      await navigator.clipboard.writeText(currentJson());
+      setInfo("Copied current state to clipboard.");
+      setError(null);
+      setTimeout(() => setInfo(null), 2500);
+    } catch (e) {
+      setError(
+        `Copy failed: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
+  };
+
+  const validateAndImport = (text: string, source: string) => {
+    try {
       const parsed = JSON.parse(text);
       if (
         typeof parsed !== "object" ||
@@ -796,39 +876,60 @@ function DataSettings() {
         typeof parsed.config !== "object" ||
         typeof parsed.scores !== "object"
       ) {
-        setError("That file doesn't look like a valid Funtime export.");
+        setError(`That ${source} doesn't look like a valid Funtime export.`);
         return;
       }
       importState(parsed as PersistedState);
       setError(null);
-      alert("Imported successfully.");
+      setInfo("Imported successfully.");
+      setTimeout(() => setInfo(null), 2500);
     } catch (e) {
       setError(
-        `Couldn't read file: ${e instanceof Error ? e.message : String(e)}`,
+        `Couldn't parse ${source}: ${e instanceof Error ? e.message : String(e)}`,
       );
     }
   };
 
+  const handleImportFile = async (file: File) => {
+    const text = await file.text();
+    validateAndImport(text, "file");
+  };
+
   return (
-    <div className="space-y-6 max-w-lg">
+    <div className="space-y-6 max-w-2xl">
       <SectionHeader
         title="Data"
-        description="Back up or restore the full configuration and scores."
+        description="Back up the full state, edit it offline, or import an updated version mid-meeting (e.g. to add new attendees)."
       />
 
       <div className="space-y-3">
-        <button onClick={handleExport} className={btnCls}>
-          <Download className="w-4 h-4" />
-          Export JSON
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={handleExport} className={btnCls}>
+            <Download className="w-4 h-4" />
+            Export JSON file
+          </button>
+          <button
+            onClick={handleCopy}
+            className={btnCls + " bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700"}
+          >
+            <ClipboardCopy className="w-4 h-4" />
+            Copy JSON
+          </button>
+        </div>
 
-        <div>
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => fileRef.current?.click()}
-            className={btnCls + " bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 hover:bg-slate-200"}
+            className={btnCls + " bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700"}
           >
             <Upload className="w-4 h-4" />
-            Import JSON
+            Import from file
+          </button>
+          <button
+            onClick={() => setPasteOpen((v) => !v)}
+            className={btnCls + " bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700"}
+          >
+            {pasteOpen ? "Hide paste box" : "Paste JSON"}
           </button>
           <input
             ref={fileRef}
@@ -837,13 +938,69 @@ function DataSettings() {
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) handleImport(f);
+              if (f) handleImportFile(f);
               e.target.value = "";
             }}
           />
         </div>
 
+        {pasteOpen && (
+          <div className="space-y-2">
+            <textarea
+              value={pasted}
+              onChange={(e) => setPasted(e.target.value)}
+              placeholder="Paste the full Funtime JSON export here…"
+              className="w-full h-48 font-mono text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-3"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  if (pasted.trim()) validateAndImport(pasted, "pasted JSON");
+                }}
+                className={btnCls}
+                disabled={!pasted.trim()}
+              >
+                Import pasted JSON
+              </button>
+              <button
+                onClick={() => setPasted("")}
+                className={btnCls + " bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700"}
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
+
+        {info && (
+          <p className="text-sm text-emerald-600 dark:text-emerald-400">
+            {info}
+          </p>
+        )}
         {error && <p className="text-sm text-red-600">{error}</p>}
+
+        <details className="text-xs text-slate-500 dark:text-slate-400">
+          <summary className="cursor-pointer font-semibold">
+            JSON shape (for hand-editing)
+          </summary>
+          <pre className="mt-2 overflow-auto bg-slate-50 dark:bg-slate-800 rounded p-3 text-[11px] leading-relaxed">{`{
+  "version": 1,
+  "config": { "welcomeTitle": "...", "presenterDurationSeconds": 300, "soundEnabled": true, "theme": "system" },
+  "tracks":     [ { "id": "trk-...", "name": "...", "sectionIds": [...] } ],
+  "sections":   [ { "id": "sec-...", "name": "...", "weight": 1 } ],
+  "evaluators": [ { "id": "ev-...", "name": "...", "color": "#ef4444" } ],
+  "items":      [ { "id": "itm-...", "name": "...", "trackId": "trk-...", "presenterId": "ev-..." } ],
+  "scores":     { "<itemId>::<sectionId>": 1..5 },
+  "attendees":  [ { "id": "att-...", "name": "...", "color": "#3b82f6" } ],
+  "bets":       { "<attendeeId>": { "<trackId>": "<itemId>" } }
+}`}</pre>
+          <p className="mt-2">
+            To add a bettor mid-meeting, append a new entry to{" "}
+            <code>attendees</code> with a unique <code>id</code> (e.g.{" "}
+            <code>att-sam</code>), then optionally add their picks to{" "}
+            <code>bets</code>. Then paste back here.
+          </p>
+        </details>
       </div>
 
       <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
