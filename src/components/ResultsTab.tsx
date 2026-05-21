@@ -124,8 +124,10 @@ export function ResultsTab() {
                         </div>
                       </th>
                     ))}
-                    <th className="px-3 py-2 text-center bg-slate-50 dark:bg-slate-800">Raw</th>
-                    <th className="px-3 py-2 text-center bg-amber-50 dark:bg-amber-900/40">
+                    <th className="px-3 py-2 text-center bg-slate-50 dark:bg-slate-800 sticky right-28 z-20 w-20 min-w-[80px] shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)]">
+                      Raw
+                    </th>
+                    <th className="px-3 py-2 text-center bg-amber-50 dark:bg-amber-900/40 sticky right-0 z-20 w-28 min-w-[112px]">
                       Weighted
                     </th>
                   </tr>
@@ -167,10 +169,10 @@ export function ResultsTab() {
                             )}
                           </td>
                         ))}
-                        <td className="px-3 py-2 text-center font-extrabold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800">
+                        <td className="px-3 py-2 text-center font-extrabold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 sticky right-28 z-10 w-20 min-w-[80px] shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.15)]">
                           {raw}/{maxRaw}
                         </td>
-                        <td className="px-3 py-2 text-center font-extrabold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/40">
+                        <td className="px-3 py-2 text-center font-extrabold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/40 sticky right-0 z-10 w-28 min-w-[112px]">
                           {weighted.toFixed(1)}/{maxWeighted.toFixed(1)}
                         </td>
                       </tr>
