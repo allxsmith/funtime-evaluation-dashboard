@@ -233,24 +233,8 @@ export function RaceTab() {
             key={track.id}
             className="rounded-3xl overflow-hidden shadow-xl"
           >
-            {/* Carnival striped header (per track) */}
-            <div className="relative">
-              <div
-                className="absolute inset-0 dark:hidden"
-                style={{
-                  backgroundImage:
-                    "repeating-linear-gradient(135deg, #dc2626 0 30px, #fbbf24 30px 60px)",
-                }}
-                aria-hidden
-              />
-              <div
-                className="absolute inset-0 hidden dark:block"
-                style={{
-                  backgroundImage:
-                    "repeating-linear-gradient(135deg, #7f1d1d 0 30px, #92400e 30px 60px)",
-                }}
-                aria-hidden
-              />
+            {/* Carnival header (per track) — solid gradient */}
+            <div className="relative bg-linear-to-r from-red-700 via-red-600 to-red-700 dark:from-red-950 dark:via-red-900 dark:to-red-950">
               {/* String lights */}
               <div
                 className="absolute top-1 left-0 right-0 h-2 flex justify-around items-center pointer-events-none"
@@ -273,7 +257,7 @@ export function RaceTab() {
                   />
                 ))}
               </div>
-              <div className="relative bg-black/45 dark:bg-black/65 text-white p-4 pt-5 flex flex-wrap items-center gap-3">
+              <div className="relative text-white p-4 pt-5 flex flex-wrap items-center gap-3">
                 <div className="min-w-0">
                   <h3 className="text-xl font-extrabold drop-shadow">
                     🎪 {track.name}
