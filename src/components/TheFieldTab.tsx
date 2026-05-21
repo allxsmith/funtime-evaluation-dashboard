@@ -28,6 +28,16 @@ function parseChip(id: string) {
   return { trackId, attendeeId };
 }
 
+function indexToLetters(idx: number): string {
+  let n = idx;
+  let out = "";
+  do {
+    out = String.fromCharCode(65 + (n % 26)) + out;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return out;
+}
+
 export function TheFieldTab() {
   const tracks = useEvaluationStore((s) => s.tracks);
   const items = useEvaluationStore((s) => s.items);
@@ -309,7 +319,7 @@ function ItemCard({
         aria-hidden
       />
 
-      {/* Jersey number */}
+      {/* Jersey letter (non-ranked identifier) */}
       <div
         className="absolute right-3 top-2 text-5xl sm:text-6xl font-black select-none leading-none"
         style={{
@@ -320,7 +330,7 @@ function ItemCard({
         }}
         aria-hidden
       >
-        #{idx + 1}
+        {indexToLetters(idx)}
       </div>
 
       <div className="relative p-5 pt-6 min-h-[200px] flex flex-col">
