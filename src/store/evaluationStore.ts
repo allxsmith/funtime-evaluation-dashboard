@@ -318,14 +318,8 @@ type SessionActions = {
   setCurrentPresenter: (evaluatorId: ID | null) => void;
   resetSpinSession: () => void;
   setRaceMode: (m: RaceMode | null) => void;
-  revealNextForPresenter: (
-    mode: RaceMode,
-    presenterItems: Array<{ id: ID; max: number }>,
-  ) => void;
-  revealAllForPresenter: (
-    mode: RaceMode,
-    presenterItems: Array<{ id: ID; max: number }>,
-  ) => void;
+  revealNextSection: (mode: RaceMode, max: number) => void;
+  revealAllSections: (mode: RaceMode, max: number) => void;
   resetRaceMode: (mode: RaceMode) => void;
   resetRace: () => void;
 };
@@ -337,8 +331,8 @@ export const useSessionStore = create<SessionState & SessionActions>((set) => ({
   presentedEvaluatorIds: [],
   currentPresenterId: null,
   raceMode: null,
-  rawRevealedByItem: {},
-  weightedRevealedByItem: {},
+  rawRevealedSectionIndex: 0,
+  weightedRevealedSectionIndex: 0,
 
   setHasEnteredApp: (v) => set({ hasEnteredApp: v }),
   setActiveTab: (t) => set({ activeTab: t }),
@@ -352,38 +346,30 @@ export const useSessionStore = create<SessionState & SessionActions>((set) => ({
   resetSpinSession: () =>
     set({ presentedEvaluatorIds: [], currentPresenterId: null }),
   setRaceMode: (m) => set({ raceMode: m }),
-  revealNextForPresenter: (mode, presenterItems) =>
+  revealNextSection: (mode, max) =>
     set((s) => {
       const key =
-        mode === "raw" ? "rawRevealedByItem" : "weightedRevealedByItem";
-      const curr = s[key];
-      const next = { ...curr };
-      for (const { id, max } of presenterItems) {
-        next[id] = Math.min((curr[id] ?? 0) + 1, max);
-      }
-      return { [key]: next };
+        mode === "raw"
+          ? "rawRevealedSectionIndex"
+          : "weightedRevealedSectionIndex";
+      return { [key]: Math.min(s[key] + 1, max) };
     }),
-  revealAllForPresenter: (mode, presenterItems) =>
-    set((s) => {
-      const key =
-        mode === "raw" ? "rawRevealedByItem" : "weightedRevealedByItem";
-      const curr = s[key];
-      const next = { ...curr };
-      for (const { id, max } of presenterItems) {
-        next[id] = max;
-      }
-      return { [key]: next };
-    }),
+  revealAllSections: (mode, max) =>
+    set(() =>
+      mode === "raw"
+        ? { rawRevealedSectionIndex: max }
+        : { weightedRevealedSectionIndex: max },
+    ),
   resetRaceMode: (mode) =>
     set(() =>
       mode === "raw"
-        ? { rawRevealedByItem: {} }
-        : { weightedRevealedByItem: {} },
+        ? { rawRevealedSectionIndex: 0 }
+        : { weightedRevealedSectionIndex: 0 },
     ),
   resetRace: () =>
     set({
       raceMode: null,
-      rawRevealedByItem: {},
-      weightedRevealedByItem: {},
+      rawRevealedSectionIndex: 0,
+      weightedRevealedSectionIndex: 0,
     }),
 }));
