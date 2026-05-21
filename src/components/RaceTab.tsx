@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Play, RotateCcw, Sparkles, Trophy } from "lucide-react";
+import { Play, RotateCcw, Trophy } from "lucide-react";
 import {
   useEvaluationStore,
   useSessionStore,
@@ -16,7 +16,6 @@ export function RaceTab() {
   const items = useEvaluationStore((s) => s.items);
   const evaluators = useEvaluationStore((s) => s.evaluators);
   const scores = useEvaluationStore((s) => s.scores);
-  const setScore = useEvaluationStore((s) => s.setScore);
   const raceMode = useSessionStore((s) => s.raceMode);
   const setRaceMode = useSessionStore((s) => s.setRaceMode);
   const rawRevealed = useSessionStore((s) => s.rawRevealedByTrack);
@@ -118,16 +117,6 @@ export function RaceTab() {
     setActiveTab("results");
   };
 
-  const handleRandomFill = () => {
-    for (const item of items) {
-      const track = tracks.find((t) => t.id === item.trackId);
-      if (!track) continue;
-      for (const sid of track.sectionIds) {
-        setScore(item.id, sid, 1 + Math.floor(Math.random() * 5));
-      }
-    }
-  };
-
   // ── Intro screen ──────────────────────────────────────────────
   if (raceMode === null) {
     return (
@@ -149,14 +138,7 @@ export function RaceTab() {
             className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-fuchsia-600 to-orange-500 text-white font-bold px-6 py-3 shadow-md hover:opacity-95 transition"
           >
             <Play className="w-4 h-4" />
-            Start Raw Race
-          </button>
-          <button
-            onClick={handleRandomFill}
-            className="inline-flex items-center gap-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold px-4 py-3"
-          >
-            <Sparkles className="w-4 h-4" />
-            Demo: Fill random scores
+            Start Race
           </button>
         </div>
       </div>
