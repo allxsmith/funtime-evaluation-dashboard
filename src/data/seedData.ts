@@ -131,11 +131,14 @@ export function buildSeed(): PersistedState {
       welcomeSubtitle: "Linters & Formatters Showdown",
       presenterDurationSeconds: 300,
       soundEnabled: true,
+      theme: "system",
     },
     tracks,
     sections: [...formatterSections, ...linterSections],
     evaluators,
     items,
     scores: {},
+    attendees: evaluators.map((e) => ({ ...e })),
+    bets: {},
   };
 }

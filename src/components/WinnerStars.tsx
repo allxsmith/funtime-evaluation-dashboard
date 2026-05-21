@@ -62,7 +62,7 @@ export function WinnerStars({
         >
           <div className="relative">
             <Star
-              className="w-28 h-28 text-slate-400 drop-shadow-xl"
+              className="w-28 h-28 text-slate-400 dark:text-slate-500 drop-shadow-xl"
               fill="currentColor"
               strokeWidth={1.5}
             />
@@ -76,7 +76,7 @@ export function WinnerStars({
             </div>
           </div>
           {runnerUpSubtitle && (
-            <div className="mt-2 text-[11px] font-bold text-slate-500">
+            <div className="mt-2 text-[11px] font-bold text-slate-500 dark:text-slate-400">
               {runnerUpSubtitle}
             </div>
           )}

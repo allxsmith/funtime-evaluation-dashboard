@@ -54,7 +54,7 @@ export function Wheel({
 
   if (n === 0) {
     return (
-      <div className="text-center text-slate-500 py-10">
+      <div className="text-center text-slate-500 dark:text-slate-400 py-10">
         No evaluators left to spin.
       </div>
     );

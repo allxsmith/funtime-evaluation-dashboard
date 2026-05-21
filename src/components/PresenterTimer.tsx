@@ -48,10 +48,10 @@ export function PresenterTimer({
   const expired = remaining === 0;
 
   const color = expired
-    ? "text-red-600"
+    ? "text-red-600 dark:text-red-400"
     : warning
-      ? "text-orange-500"
-      : "text-slate-800";
+      ? "text-orange-500 dark:text-orange-400"
+      : "text-slate-800 dark:text-slate-100";
   const barColor = expired
     ? "bg-red-500"
     : warning
@@ -65,7 +65,7 @@ export function PresenterTimer({
       >
         {mm}:{ss}
       </div>
-      <div className="w-full max-w-xs h-2 bg-slate-200 rounded-full overflow-hidden">
+      <div className="w-full max-w-xs h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
         <div
           className={`h-full transition-[width] duration-200 ${barColor}`}
           style={{ width: `${pct}%` }}
@@ -74,7 +74,7 @@ export function PresenterTimer({
       <div className="flex gap-2">
         <button
           onClick={() => setRunning((r) => !r)}
-          className="rounded-full bg-slate-100 hover:bg-slate-200 p-2.5"
+          className="rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 p-2.5"
           aria-label={running ? "Pause" : "Resume"}
         >
           {running ? (
@@ -89,7 +89,7 @@ export function PresenterTimer({
             setRunning(true);
             lastTsRef.current = null;
           }}
-          className="rounded-full bg-slate-100 hover:bg-slate-200 p-2.5"
+          className="rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 p-2.5"
           aria-label="Reset timer"
         >
           <RotateCcw className="w-4 h-4" />

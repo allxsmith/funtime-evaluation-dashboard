@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type {
   AppConfig,
+  Attendee,
+  Bets,
   EvalItem,
   Evaluator,
   ID,
@@ -32,6 +34,12 @@ type PersistedActions = {
   deleteItem: (id: ID) => void;
   setScore: (itemId: ID, sectionId: ID, value: number) => void;
   clearScore: (itemId: ID, sectionId: ID) => void;
+  addAttendee: (name: string, color: string) => void;
+  updateAttendee: (id: ID, patch: Partial<Attendee>) => void;
+  deleteAttendee: (id: ID) => void;
+  syncEvaluatorsToAttendees: () => void;
+  placeBet: (attendeeId: ID, trackId: ID, itemId: ID) => void;
+  clearBet: (attendeeId: ID, trackId: ID) => void;
   importState: (data: PersistedState) => void;
   resetToDefaults: () => void;
 };
@@ -72,11 +80,18 @@ export const useEvaluationStore = create<EvaluationStore>()(
             const [itemId] = k.split("::") as [ID, ID];
             if (!itemIdsToRemove.has(itemId)) scores[k as ScoreKey] = v;
           }
+          // Remove bets for this track
+          const bets: Bets = {};
+          for (const [aid, perTrack] of Object.entries(s.bets)) {
+            const { [id]: _, ...rest } = perTrack;
+            if (Object.keys(rest).length > 0) bets[aid] = rest;
+          }
           return {
             tracks: s.tracks.filter((t) => t.id !== id),
             sections: s.sections.filter((sec) => !sectionsToRemove.has(sec.id)),
             items: s.items.filter((i) => i.trackId !== id),
             scores,
+            bets,
           };
         }),
 
@@ -118,9 +133,19 @@ export const useEvaluationStore = create<EvaluationStore>()(
         }),
 
       addEvaluator: (name, color) =>
-        set((s) => ({
-          evaluators: [...s.evaluators, { id: newId("ev"), name, color }],
-        })),
+        set((s) => {
+          const id = newId("ev");
+          const newEv: Evaluator = { id, name, color };
+          // Auto-mirror: add a matching attendee with the same id
+          const newAttendees =
+            s.attendees.some((a) => a.id === id)
+              ? s.attendees
+              : [...s.attendees, { id, name, color }];
+          return {
+            evaluators: [...s.evaluators, newEv],
+            attendees: newAttendees,
+          };
+        }),
 
       updateEvaluator: (id, patch) =>
         set((s) => ({
@@ -161,7 +186,16 @@ export const useEvaluationStore = create<EvaluationStore>()(
             const [itemId] = k.split("::") as [ID, ID];
             if (itemId !== id) scores[k as ScoreKey] = v;
           }
-          return { items: s.items.filter((i) => i.id !== id), scores };
+          // Remove any bets pointing at this item
+          const bets: Bets = {};
+          for (const [aid, perTrack] of Object.entries(s.bets)) {
+            const cleaned: Record<ID, ID> = {};
+            for (const [tid, iid] of Object.entries(perTrack)) {
+              if (iid !== id) cleaned[tid] = iid;
+            }
+            if (Object.keys(cleaned).length > 0) bets[aid] = cleaned;
+          }
+          return { items: s.items.filter((i) => i.id !== id), scores, bets };
         }),
 
       setScore: (itemId, sectionId, value) =>
@@ -175,6 +209,56 @@ export const useEvaluationStore = create<EvaluationStore>()(
           return { scores: rest };
         }),
 
+      addAttendee: (name, color) =>
+        set((s) => ({
+          attendees: [...s.attendees, { id: newId("att"), name, color }],
+        })),
+
+      updateAttendee: (id, patch) =>
+        set((s) => ({
+          attendees: s.attendees.map((a) =>
+            a.id === id ? { ...a, ...patch } : a,
+          ),
+        })),
+
+      deleteAttendee: (id) =>
+        set((s) => {
+          const { [id]: _, ...bets } = s.bets;
+          return {
+            attendees: s.attendees.filter((a) => a.id !== id),
+            bets,
+          };
+        }),
+
+      syncEvaluatorsToAttendees: () =>
+        set((s) => {
+          const have = new Set(s.attendees.map((a) => a.id));
+          const additions = s.evaluators
+            .filter((e) => !have.has(e.id))
+            .map((e) => ({ id: e.id, name: e.name, color: e.color }));
+          if (additions.length === 0) return s;
+          return { attendees: [...s.attendees, ...additions] };
+        }),
+
+      placeBet: (attendeeId, trackId, itemId) =>
+        set((s) => {
+          const curr = s.bets[attendeeId] ?? {};
+          return {
+            bets: { ...s.bets, [attendeeId]: { ...curr, [trackId]: itemId } },
+          };
+        }),
+
+      clearBet: (attendeeId, trackId) =>
+        set((s) => {
+          const curr = s.bets[attendeeId];
+          if (!curr) return s;
+          const { [trackId]: _, ...rest } = curr;
+          const bets: Bets = { ...s.bets };
+          if (Object.keys(rest).length === 0) delete bets[attendeeId];
+          else bets[attendeeId] = rest;
+          return { bets };
+        }),
+
       importState: (data) =>
         set(() => ({
           version: 1,
@@ -184,6 +268,8 @@ export const useEvaluationStore = create<EvaluationStore>()(
           evaluators: data.evaluators,
           items: data.items,
           scores: data.scores,
+          attendees: data.attendees ?? data.evaluators.map((e) => ({ ...e })),
+          bets: data.bets ?? {},
         })),
 
       resetToDefaults: () => set(() => ({ ...buildSeed() })),
@@ -199,7 +285,26 @@ export const useEvaluationStore = create<EvaluationStore>()(
         evaluators: s.evaluators,
         items: s.items,
         scores: s.scores,
+        attendees: s.attendees,
+        bets: s.bets,
       }),
+      merge: (persisted, current) => {
+        // Backfill new fields if a prior version of localStorage is missing them.
+        const p = (persisted ?? {}) as Partial<PersistedState>;
+        return {
+          ...current,
+          ...p,
+          config: {
+            ...current.config,
+            ...(p.config ?? {}),
+          },
+          attendees:
+            p.attendees && p.attendees.length > 0
+              ? p.attendees
+              : (p.evaluators ?? current.evaluators).map((e) => ({ ...e })),
+          bets: p.bets ?? {},
+        } as typeof current;
+      },
     },
   ),
 );

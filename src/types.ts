@@ -28,11 +28,23 @@ export type EvalItem = {
 export type ScoreKey = `${ID}::${ID}`;
 export type Scores = Record<ScoreKey, number>;
 
+export type Attendee = {
+  id: ID;
+  name: string;
+  color: string;
+};
+
+// attendeeId -> trackId -> itemId (one pick per attendee per track)
+export type Bets = Record<ID, Record<ID, ID>>;
+
+export type ThemeMode = "system" | "light" | "dark";
+
 export type AppConfig = {
   welcomeTitle: string;
   welcomeSubtitle: string;
   presenterDurationSeconds: number;
   soundEnabled: boolean;
+  theme: ThemeMode;
 };
 
 export type PersistedState = {
@@ -43,6 +55,8 @@ export type PersistedState = {
   evaluators: Evaluator[];
   items: EvalItem[];
   scores: Scores;
+  attendees: Attendee[];
+  bets: Bets;
 };
 
 export type TabId = "items" | "spin" | "race" | "results";

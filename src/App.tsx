@@ -1,11 +1,21 @@
+import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useSessionStore } from "./store/evaluationStore";
+import { useEvaluationStore, useSessionStore } from "./store/evaluationStore";
 import { WelcomeSplash } from "./components/WelcomeSplash";
 import { TabShell } from "./components/TabShell";
 import { AdminPanel } from "./components/AdminPanel";
+import { applyTheme, watchSystemTheme } from "./utils/theme";
 
 export function App() {
   const hasEntered = useSessionStore((s) => s.hasEnteredApp);
+  const theme = useEvaluationStore((s) => s.config.theme ?? "system");
+
+  useEffect(() => {
+    applyTheme(theme);
+    if (theme === "system") {
+      return watchSystemTheme(() => applyTheme("system"));
+    }
+  }, [theme]);
 
   return (
     <>

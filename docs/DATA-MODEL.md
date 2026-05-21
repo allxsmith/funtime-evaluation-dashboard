@@ -16,14 +16,20 @@ type PersistedState = {
     welcomeTitle: string;
     welcomeSubtitle: string;
     presenterDurationSeconds: number;
+    soundEnabled: boolean;
+    theme: "system" | "light" | "dark";
   };
   tracks: Track[];             // { id, name, sectionIds[] }
   sections: Section[];         // { id, name, weight }
   evaluators: Evaluator[];     // { id, name, color }
   items: EvalItem[];           // { id, trackId, name, presenterId }
   scores: Record<ScoreKey, number>;  // ScoreKey = `${itemId}::${sectionId}`, value 1-5
+  attendees: Attendee[];       // { id, name, color } — people in the room (includes evaluators by default)
+  bets: Bets;                  // attendeeId -> trackId -> itemId (one pick per attendee per track)
 };
 ```
+
+Backfill on load: when the persisted state predates a new field, Zustand `merge` fills sensible defaults — empty `bets`, attendees copied from evaluators, `config.theme = "system"`. This keeps old browser state working after a release.
 
 `scoreKey(itemId, sectionId)` from `src/types.ts` builds the lookup key.
 
@@ -51,10 +57,12 @@ type SessionState = {
 
 ## Cascade rules
 
-- Deleting an **evaluator** also deletes their items and any scores for those items.
-- Deleting a **track** also deletes its sections, items, and related scores.
+- Deleting an **evaluator** also deletes their items and any scores for those items. The matching attendee is left in place (they may still be in the room).
+- Deleting a **track** also deletes its sections, items, related scores, and any bets for that track.
 - Deleting a **section** also deletes scores referencing that section.
-- Deleting an **item** also deletes scores for that item.
+- Deleting an **item** also deletes scores AND any bets pointing at that item.
+- Deleting an **attendee** also clears their bets.
+- Adding an **evaluator** auto-mirrors them into the attendees list (same id/name/color).
 
 ## Score computation
 

@@ -28,7 +28,7 @@ export function PresenterCard({
       initial={{ opacity: 0, scale: 0.9, y: 20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="rounded-3xl bg-white shadow-2xl border-4 overflow-hidden"
+      className="rounded-3xl bg-white dark:bg-slate-900 shadow-2xl border-4 overflow-hidden"
       style={{ borderColor: presenter.color }}
     >
       <div
@@ -46,35 +46,35 @@ export function PresenterCard({
 
       <div className="p-6 grid gap-6 sm:grid-cols-[1fr_auto] items-center">
         <div>
-          <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-2">
+          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
             Items
           </p>
           <ul className="space-y-2">
             {items.map((item) => (
               <li
                 key={item.id}
-                className="flex items-center gap-3 bg-slate-50 rounded-xl px-4 py-2.5"
+                className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-2.5"
               >
                 <span
                   className="w-2.5 h-2.5 rounded-full shrink-0"
                   style={{ backgroundColor: presenter.color }}
                   aria-hidden
                 />
-                <span className="font-semibold text-slate-800">
+                <span className="font-semibold text-slate-800 dark:text-slate-100">
                   {item.name}
                 </span>
-                <span className="ml-auto text-xs text-slate-500 font-medium uppercase">
+                <span className="ml-auto text-xs text-slate-500 dark:text-slate-400 font-medium uppercase">
                   {trackName(item.trackId)}
                 </span>
               </li>
             ))}
             {items.length === 0 && (
-              <li className="text-slate-400 italic">No items assigned.</li>
+              <li className="text-slate-400 dark:text-slate-500 italic">No items assigned.</li>
             )}
           </ul>
         </div>
 
-        <div className="flex flex-col items-center gap-4 sm:border-l sm:border-slate-200 sm:pl-6">
+        <div className="flex flex-col items-center gap-4 sm:border-l sm:border-slate-200 dark:sm:border-slate-700 sm:pl-6">
           <PresenterTimer
             durationSeconds={duration}
             presenterId={presenterId}

@@ -22,7 +22,7 @@ export function HorseTrack({
     TRACK_START_PCT + (clampedPct / 100) * (TRACK_END_PCT - TRACK_START_PCT);
 
   return (
-    <div className="relative h-16 rounded-xl overflow-hidden border-2 border-amber-300 bg-linear-to-b from-amber-100 to-amber-200">
+    <div className="relative h-16 rounded-xl overflow-hidden border-2 border-amber-300 dark:border-amber-700 bg-linear-to-b from-amber-100 to-amber-200 dark:from-amber-900/60 dark:to-amber-950/80">
       {/* lane stripes */}
       <div
         className="absolute inset-0 opacity-30"
@@ -51,7 +51,7 @@ export function HorseTrack({
 
       {/* Item label */}
       <div className="absolute left-2 top-1 flex items-center gap-2 z-0">
-        <span className="text-[11px] font-extrabold text-amber-900 uppercase tracking-wide">
+        <span className="text-[11px] font-extrabold text-amber-900 dark:text-amber-100 uppercase tracking-wide">
           {itemName}
         </span>
         <span
@@ -66,7 +66,7 @@ export function HorseTrack({
       </div>
 
       {scoreLabel && (
-        <div className="absolute right-10 top-1 text-xs font-extrabold text-amber-900 bg-white/70 rounded-md px-1.5">
+        <div className="absolute right-10 top-1 text-xs font-extrabold text-amber-900 dark:text-amber-100 bg-white/70 dark:bg-black/40 rounded-md px-1.5">
           {scoreLabel}
         </div>
       )}

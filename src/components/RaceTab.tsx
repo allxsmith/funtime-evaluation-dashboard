@@ -171,14 +171,14 @@ export function RaceTab() {
   // ── Intro screen ──────────────────────────────────────────────
   if (raceMode === null) {
     return (
-      <div className="max-w-2xl mx-auto rounded-3xl bg-white shadow-xl p-8 text-center">
+      <div className="max-w-2xl mx-auto rounded-3xl bg-white dark:bg-slate-900 shadow-xl p-8 text-center">
         <div className="text-6xl mb-3" aria-hidden>
           🎪
         </div>
-        <h2 className="text-3xl font-extrabold text-slate-800">
+        <h2 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">
           Ready to Race
         </h2>
-        <p className="text-slate-500 mt-2">
+        <p className="text-slate-500 dark:text-slate-400 mt-2">
           After each presenter finishes their pitch, come back here and reveal
           their sections one at a time. Their horse(s) will advance based on
           their scores.
@@ -193,7 +193,7 @@ export function RaceTab() {
           </button>
           <button
             onClick={handleRandomFill}
-            className="inline-flex items-center gap-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-3"
+            className="inline-flex items-center gap-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold px-4 py-3"
           >
             <Sparkles className="w-4 h-4" />
             Demo: Fill random scores
@@ -375,9 +375,9 @@ export function RaceTab() {
         return (
           <section
             key={track.id}
-            className="rounded-3xl bg-white shadow-md p-5"
+            className="rounded-3xl bg-white dark:bg-slate-900 shadow-md p-5"
           >
-            <h3 className="text-xl font-extrabold text-slate-800 mb-3">
+            <h3 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 mb-3">
               {track.name}
             </h3>
             <div className="space-y-2.5">
@@ -414,7 +414,7 @@ export function RaceTab() {
                 );
               })}
               {trackItems.length === 0 && (
-                <p className="text-slate-400 italic">No items in this track.</p>
+                <p className="text-slate-400 dark:text-slate-500 italic">No items in this track.</p>
               )}
             </div>
           </section>

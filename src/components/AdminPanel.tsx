@@ -13,6 +13,7 @@ import { getScore } from "../utils/scoring";
 const SUB_TABS = [
   { id: "welcome", label: "Welcome" },
   { id: "evaluators", label: "Evaluators" },
+  { id: "attendees", label: "Attendees" },
   { id: "tracks", label: "Tracks" },
   { id: "sections", label: "Sections" },
   { id: "items", label: "Items" },
@@ -29,14 +30,14 @@ export function AdminPanel() {
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(96vw,1000px)] max-h-[92vh] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl bg-white shadow-2xl flex flex-col">
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-            <Dialog.Title className="text-lg font-extrabold text-slate-800">
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(96vw,1000px)] max-h-[92vh] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl flex flex-col">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-5 py-3">
+            <Dialog.Title className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
               Settings
             </Dialog.Title>
             <Dialog.Close
               aria-label="Close"
-              className="rounded-full p-2 hover:bg-slate-100"
+              className="rounded-full p-2 hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-200"
             >
               <X className="w-5 h-5" />
             </Dialog.Close>
@@ -49,13 +50,13 @@ export function AdminPanel() {
           >
             <Tabs.List
               aria-label="Settings sections"
-              className="flex flex-wrap gap-1 px-4 py-2 border-b border-slate-200 bg-slate-50"
+              className="flex flex-wrap gap-1 px-4 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40"
             >
               {SUB_TABS.map((t) => (
                 <Tabs.Trigger
                   key={t.id}
                   value={t.id}
-                  className="px-3 py-1.5 rounded-full text-xs font-semibold text-slate-600 data-[state=active]:bg-slate-800 data-[state=active]:text-white hover:bg-slate-200 data-[state=active]:hover:bg-slate-800 transition"
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold text-slate-600 dark:text-slate-300 data-[state=active]:bg-slate-800 data-[state=active]:text-white dark:data-[state=active]:bg-fuchsia-600 hover:bg-slate-200 dark:hover:bg-slate-800 data-[state=active]:hover:bg-slate-800 transition"
                 >
                   {t.label}
                 </Tabs.Trigger>
@@ -68,6 +69,9 @@ export function AdminPanel() {
               </Tabs.Content>
               <Tabs.Content value="evaluators">
                 <EvaluatorsSettings />
+              </Tabs.Content>
+              <Tabs.Content value="attendees">
+                <AttendeesSettings />
               </Tabs.Content>
               <Tabs.Content value="tracks">
                 <TracksSettings />
@@ -93,11 +97,11 @@ export function AdminPanel() {
 }
 
 const inputCls =
-  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-fuchsia-500";
+  "w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-fuchsia-500";
 const btnCls =
-  "inline-flex items-center gap-1.5 rounded-full bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold px-3 py-1.5 transition";
+  "inline-flex items-center gap-1.5 rounded-full bg-slate-800 dark:bg-fuchsia-600 hover:bg-slate-900 dark:hover:bg-fuchsia-500 text-white text-sm font-semibold px-3 py-1.5 transition";
 const dangerBtnCls =
-  "inline-flex items-center gap-1.5 rounded-full bg-red-100 hover:bg-red-200 text-red-700 text-xs font-semibold px-2.5 py-1 transition";
+  "inline-flex items-center gap-1.5 rounded-full bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 text-xs font-semibold px-2.5 py-1 transition";
 
 function SectionHeader({
   title,
@@ -108,9 +112,9 @@ function SectionHeader({
 }) {
   return (
     <div className="mb-4">
-      <h3 className="text-lg font-extrabold text-slate-800">{title}</h3>
+      <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">{title}</h3>
       {description && (
-        <p className="text-sm text-slate-500 mt-0.5">{description}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{description}</p>
       )}
     </div>
   );
@@ -171,7 +175,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">
+      <span className="block text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">
         {label}
       </span>
       {children}
@@ -195,13 +199,13 @@ function EvaluatorsSettings() {
     <div>
       <SectionHeader
         title="Evaluators"
-        description="People who present. Each owns one or more items."
+        description="People who present. Each owns one or more items. Adding an evaluator also adds them as an attendee."
       />
       <div className="space-y-2 mb-4">
         {evaluators.map((ev) => (
           <div
             key={ev.id}
-            className="flex items-center gap-3 bg-slate-50 rounded-lg px-3 py-2"
+            className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2"
           >
             <input
               type="color"
@@ -209,11 +213,11 @@ function EvaluatorsSettings() {
               onChange={(e) =>
                 updateEvaluator(ev.id, { color: e.target.value })
               }
-              className="w-9 h-9 rounded cursor-pointer border border-slate-200"
+              className="w-9 h-9 rounded cursor-pointer border border-slate-200 dark:border-slate-700"
               aria-label={`Color for ${ev.name}`}
             />
             <input
-              className="flex-1 bg-transparent border-0 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 rounded px-2 py-1"
+              className="flex-1 bg-transparent border-0 font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 rounded px-2 py-1"
               value={ev.name}
               onChange={(e) =>
                 updateEvaluator(ev.id, { name: e.target.value })
@@ -260,6 +264,99 @@ function EvaluatorsSettings() {
   );
 }
 
+// ─── Attendees ────────────────────────────────────────────────────────
+
+function AttendeesSettings() {
+  const attendees = useEvaluationStore((s) => s.attendees);
+  const addAttendee = useEvaluationStore((s) => s.addAttendee);
+  const updateAttendee = useEvaluationStore((s) => s.updateAttendee);
+  const deleteAttendee = useEvaluationStore((s) => s.deleteAttendee);
+  const syncEvaluators = useEvaluationStore(
+    (s) => s.syncEvaluatorsToAttendees,
+  );
+  const [newName, setNewName] = useState("");
+
+  const nextColor =
+    DEFAULT_PALETTE[attendees.length % DEFAULT_PALETTE.length];
+
+  return (
+    <div>
+      <SectionHeader
+        title="Attendees"
+        description="People in the room who can place bets on The Field. Evaluators are auto-added; add observers here too."
+      />
+      <div className="space-y-2 mb-4">
+        {attendees.map((att) => (
+          <div
+            key={att.id}
+            className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2"
+          >
+            <input
+              type="color"
+              value={att.color}
+              onChange={(e) =>
+                updateAttendee(att.id, { color: e.target.value })
+              }
+              className="w-9 h-9 rounded cursor-pointer border border-slate-200 dark:border-slate-700"
+              aria-label={`Color for ${att.name}`}
+            />
+            <input
+              className="flex-1 bg-transparent border-0 font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 rounded px-2 py-1"
+              value={att.name}
+              onChange={(e) =>
+                updateAttendee(att.id, { name: e.target.value })
+              }
+            />
+            <button
+              onClick={() => {
+                if (
+                  confirm(
+                    `Remove ${att.name} from attendees? Their bets will be cleared.`,
+                  )
+                )
+                  deleteAttendee(att.id);
+              }}
+              className={dangerBtnCls}
+              aria-label="Delete attendee"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2 max-w-md flex-1 min-w-[260px]">
+          <input
+            className={inputCls}
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="New attendee name"
+          />
+          <button
+            onClick={() => {
+              const n = newName.trim();
+              if (!n) return;
+              addAttendee(n, nextColor);
+              setNewName("");
+            }}
+            className={btnCls}
+          >
+            <Plus className="w-4 h-4" />
+            Add
+          </button>
+        </div>
+        <button
+          onClick={syncEvaluators}
+          className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-semibold px-3 py-1.5 transition"
+          title="Re-add any evaluators not currently in this list"
+        >
+          Sync evaluators
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Tracks ───────────────────────────────────────────────────────────
 
 function TracksSettings() {
@@ -279,14 +376,14 @@ function TracksSettings() {
         {tracks.map((t) => (
           <div
             key={t.id}
-            className="flex items-center gap-3 bg-slate-50 rounded-lg px-3 py-2"
+            className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2"
           >
             <input
-              className="flex-1 bg-transparent border-0 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 rounded px-2 py-1"
+              className="flex-1 bg-transparent border-0 font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 rounded px-2 py-1"
               value={t.name}
               onChange={(e) => updateTrack(t.id, { name: e.target.value })}
             />
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
               {t.sectionIds.length} sections
             </span>
             <button
@@ -351,7 +448,7 @@ function SectionsSettings() {
       />
       {tracks.map((track) => (
         <section key={track.id}>
-          <h4 className="font-extrabold text-slate-800 mb-2">{track.name}</h4>
+          <h4 className="font-extrabold text-slate-800 dark:text-slate-100 mb-2">{track.name}</h4>
           <div className="space-y-2 mb-3">
             {track.sectionIds.map((sid) => {
               const sec = sectionsById[sid];
@@ -359,22 +456,22 @@ function SectionsSettings() {
               return (
                 <div
                   key={sid}
-                  className="flex items-center gap-3 bg-slate-50 rounded-lg px-3 py-2"
+                  className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2"
                 >
                   <input
-                    className="flex-1 bg-transparent font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 rounded px-2 py-1"
+                    className="flex-1 bg-transparent font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 rounded px-2 py-1"
                     value={sec.name}
                     onChange={(e) =>
                       updateSection(sid, { name: e.target.value })
                     }
                   />
-                  <label className="text-xs text-slate-500 flex items-center gap-2">
+                  <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
                     weight
                     <input
                       type="number"
                       min={0}
                       step={0.5}
-                      className="w-20 rounded border border-slate-300 px-2 py-1 text-sm"
+                      className="w-20 rounded border border-slate-300 dark:border-slate-700 px-2 py-1 text-sm"
                       value={sec.weight}
                       onChange={(e) =>
                         updateSection(sid, {
@@ -450,15 +547,15 @@ function ItemsSettings() {
         {items.map((item) => (
           <div
             key={item.id}
-            className="flex flex-wrap items-center gap-2 bg-slate-50 rounded-lg px-3 py-2"
+            className="flex flex-wrap items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2"
           >
             <input
-              className="flex-1 min-w-[180px] bg-transparent font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 rounded px-2 py-1"
+              className="flex-1 min-w-[180px] bg-transparent font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 rounded px-2 py-1"
               value={item.name}
               onChange={(e) => updateItem(item.id, { name: e.target.value })}
             />
             <select
-              className="text-sm rounded border border-slate-300 px-2 py-1"
+              className="text-sm rounded border border-slate-300 dark:border-slate-700 px-2 py-1"
               value={item.trackId}
               onChange={(e) =>
                 updateItem(item.id, { trackId: e.target.value })
@@ -471,7 +568,7 @@ function ItemsSettings() {
               ))}
             </select>
             <select
-              className="text-sm rounded border border-slate-300 px-2 py-1"
+              className="text-sm rounded border border-slate-300 dark:border-slate-700 px-2 py-1"
               value={item.presenterId}
               onChange={(e) =>
                 updateItem(item.id, { presenterId: e.target.value })
@@ -502,7 +599,7 @@ function ItemsSettings() {
           placeholder="New item name"
         />
         <select
-          className="rounded border border-slate-300 px-2 py-2 text-sm"
+          className="rounded border border-slate-300 dark:border-slate-700 px-2 py-2 text-sm"
           value={newTrackId}
           onChange={(e) => setNewTrackId(e.target.value)}
         >
@@ -513,7 +610,7 @@ function ItemsSettings() {
           ))}
         </select>
         <select
-          className="rounded border border-slate-300 px-2 py-2 text-sm"
+          className="rounded border border-slate-300 dark:border-slate-700 px-2 py-2 text-sm"
           value={newPresenterId}
           onChange={(e) => setNewPresenterId(e.target.value)}
         >
@@ -571,11 +668,11 @@ function ScoresSettings() {
         description="Enter a score (1–5) per item per section. Leave blank for no score."
       />
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <label className="text-xs font-bold uppercase tracking-wide text-slate-500">
+        <label className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           Item
         </label>
         <select
-          className="rounded border border-slate-300 px-3 py-2 text-sm font-semibold"
+          className="rounded border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm font-semibold"
           value={selectedItemId}
           onChange={(e) => setSelectedItemId(e.target.value)}
         >
@@ -611,12 +708,12 @@ function ScoresSettings() {
             return (
               <div
                 key={sid}
-                className="flex items-center gap-3 bg-slate-50 rounded-lg px-3 py-2"
+                className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2"
               >
-                <span className="flex-1 font-medium text-slate-800">
+                <span className="flex-1 font-medium text-slate-800 dark:text-slate-100">
                   {sec.name}
                 </span>
-                <span className="text-xs text-slate-500">w={sec.weight}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">w={sec.weight}</span>
                 <div className="flex items-center gap-1">
                   {[1, 2, 3, 4, 5].map((n) => (
                     <button
@@ -625,7 +722,7 @@ function ScoresSettings() {
                       className={`w-8 h-8 rounded font-bold text-sm transition ${
                         value === n
                           ? "bg-fuchsia-600 text-white"
-                          : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-100"
+                          : "bg-white border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800"
                       }`}
                     >
                       {n}
@@ -634,7 +731,7 @@ function ScoresSettings() {
                   {value > 0 && (
                     <button
                       onClick={() => clearScore(item.id, sid)}
-                      className="ml-1 rounded p-1 text-slate-400 hover:bg-slate-200"
+                      className="ml-1 rounded p-1 text-slate-400 dark:text-slate-500 hover:bg-slate-200"
                       aria-label="Clear"
                     >
                       <X className="w-4 h-4" />
@@ -646,7 +743,7 @@ function ScoresSettings() {
           })}
         </div>
       ) : (
-        <p className="text-slate-500 italic">Pick an item to score.</p>
+        <p className="text-slate-500 dark:text-slate-400 italic">Pick an item to score.</p>
       )}
     </div>
   );
@@ -670,6 +767,8 @@ function DataSettings() {
       evaluators: state.evaluators,
       items: state.items,
       scores: state.scores,
+      attendees: state.attendees,
+      bets: state.bets,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], {
       type: "application/json",
@@ -726,7 +825,7 @@ function DataSettings() {
         <div>
           <button
             onClick={() => fileRef.current?.click()}
-            className={btnCls + " bg-slate-100 text-slate-800 hover:bg-slate-200"}
+            className={btnCls + " bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 hover:bg-slate-200"}
           >
             <Upload className="w-4 h-4" />
             Import JSON
@@ -747,7 +846,7 @@ function DataSettings() {
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
 
-      <div className="border-t border-slate-200 pt-4">
+      <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
         <button
           onClick={() => {
             if (
