@@ -10,16 +10,29 @@ export function HorseTrack({
   presenterColor,
   positionPct,
   scoreLabel,
+  finishLinePct,
 }: {
   itemName: string;
   presenterName: string;
   presenterColor: string;
   positionPct: number;
   scoreLabel?: string;
+  /** 0–100. When omitted or 0, the finish line stays at the right edge. */
+  finishLinePct?: number;
 }) {
   const clampedPct = Math.max(0, Math.min(100, positionPct));
   const horseLeft =
     TRACK_START_PCT + (clampedPct / 100) * (TRACK_END_PCT - TRACK_START_PCT);
+
+  // Default the finish line to the right edge when there's no leader yet.
+  const hasLeader = finishLinePct !== undefined && finishLinePct > 0;
+  const clampedFinish = hasLeader
+    ? Math.max(0, Math.min(100, finishLinePct!))
+    : 100;
+  const finishLeft = hasLeader
+    ? TRACK_START_PCT +
+      (clampedFinish / 100) * (TRACK_END_PCT - TRACK_START_PCT)
+    : 100;
 
   return (
     <div className="relative h-20 sm:h-24 rounded-xl overflow-hidden border-2 border-amber-300 dark:border-amber-700 bg-linear-to-b from-amber-100 to-amber-200 dark:from-amber-900/60 dark:to-amber-950/80">
@@ -32,22 +45,30 @@ export function HorseTrack({
         }}
         aria-hidden
       />
-      {/* finish line */}
-      <div
-        className="absolute inset-y-0 right-2 w-3"
+      {/* finish line — slides to the current leader's position */}
+      <motion.div
+        className="absolute inset-y-0 w-3 -translate-x-1/2"
         style={{
           backgroundImage:
             "repeating-linear-gradient(45deg, #000 0 6px, #fff 6px 12px)",
         }}
+        initial={false}
+        animate={{ left: hasLeader ? `${finishLeft}%` : `calc(100% - 8px)` }}
+        transition={{ duration: 0.9, ease: [0.34, 1.56, 0.64, 1] }}
         aria-hidden
       />
-      <span
-        className="absolute right-6 top-1 text-lg"
+      <motion.span
+        className="absolute top-1 text-lg"
         role="img"
         aria-label="finish flag"
+        initial={false}
+        animate={{
+          left: hasLeader ? `calc(${finishLeft}% + 6px)` : `calc(100% - 28px)`,
+        }}
+        transition={{ duration: 0.9, ease: [0.34, 1.56, 0.64, 1] }}
       >
         🏁
-      </span>
+      </motion.span>
 
       {/* Item label */}
       <div className="absolute left-2 top-1 flex items-center gap-2 z-10">

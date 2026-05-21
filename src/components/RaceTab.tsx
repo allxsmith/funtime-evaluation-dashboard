@@ -316,26 +316,38 @@ export function RaceTab() {
                 {revealedN}/{track.sectionIds.length} sections revealed
               </div>
               <div className="space-y-3">
-                {trackItems.map((item) => {
-                  const presenter = evaluatorById[item.presenterId];
-                  const { pct, earned, max } = positionPctForItem(item, track);
-                  return (
-                    <HorseTrack
-                      key={item.id}
-                      itemName={item.name}
-                      presenterName={presenter?.name ?? ""}
-                      presenterColor={presenter?.color ?? "#94a3b8"}
-                      positionPct={pct}
-                      scoreLabel={
-                        revealedN > 0
-                          ? mode === "raw"
-                            ? `${earned}/${max}`
-                            : `${earned.toFixed(1)}/${max.toFixed(1)}`
-                          : undefined
-                      }
-                    />
+                {(() => {
+                  // Precompute every horse's position so we can find the
+                  // current leader and slide the finish line there.
+                  const rows = trackItems.map((item) => ({
+                    item,
+                    ...positionPctForItem(item, track),
+                  }));
+                  const leaderPct = rows.reduce(
+                    (mx, r) => (r.pct > mx ? r.pct : mx),
+                    0,
                   );
-                })}
+                  return rows.map(({ item, pct, earned, max }) => {
+                    const presenter = evaluatorById[item.presenterId];
+                    return (
+                      <HorseTrack
+                        key={item.id}
+                        itemName={item.name}
+                        presenterName={presenter?.name ?? ""}
+                        presenterColor={presenter?.color ?? "#94a3b8"}
+                        positionPct={pct}
+                        finishLinePct={revealedN > 0 ? leaderPct : undefined}
+                        scoreLabel={
+                          revealedN > 0
+                            ? mode === "raw"
+                              ? `${earned}/${max}`
+                              : `${earned.toFixed(1)}/${max.toFixed(1)}`
+                            : undefined
+                        }
+                      />
+                    );
+                  });
+                })()}
                 {trackItems.length === 0 && (
                   <p className="text-slate-400 dark:text-slate-500 italic">
                     No items in this track.
