@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   DndContext,
@@ -11,9 +11,9 @@ import {
   closestCenter,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { Sparkles, X } from "lucide-react";
+import { Plus, Sparkles, X } from "lucide-react";
 import { useEvaluationStore } from "../store/evaluationStore";
-import { contrastText } from "../utils/colors";
+import { DEFAULT_PALETTE, contrastText } from "../utils/colors";
 import { sfx } from "../utils/sounds";
 import type { Attendee, ID, Track } from "../types";
 
@@ -144,6 +144,7 @@ export function TheFieldTab() {
                     />
                   ))
                 )}
+                <AddBettorChip />
               </PoolDropZone>
 
               <div className="mt-4 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -169,6 +170,65 @@ export function TheFieldTab() {
         })}
       </div>
     </DndContext>
+  );
+}
+
+// ── Inline "add bettor" chip ────────────────────────────────────────
+
+function AddBettorChip() {
+  const attendees = useEvaluationStore((s) => s.attendees);
+  const addAttendee = useEvaluationStore((s) => s.addAttendee);
+  const [name, setName] = useState("");
+  const [editing, setEditing] = useState(false);
+
+  const commit = () => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setEditing(false);
+      return;
+    }
+    const dup = attendees.some(
+      (a) => a.name.trim().toLowerCase() === trimmed.toLowerCase(),
+    );
+    if (!dup) {
+      const color =
+        DEFAULT_PALETTE[attendees.length % DEFAULT_PALETTE.length];
+      addAttendee(trimmed, color);
+      sfx.click();
+    }
+    setName("");
+    setEditing(false);
+  };
+
+  if (!editing) {
+    return (
+      <button
+        onClick={() => setEditing(true)}
+        className="inline-flex items-center gap-1 rounded-full border-2 border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:border-fuchsia-500 hover:text-fuchsia-600 dark:hover:text-fuchsia-400 px-2.5 py-0.5 text-xs font-bold transition"
+        title="Add a new bettor"
+      >
+        <Plus className="w-3 h-3" />
+        Add bettor
+      </button>
+    );
+  }
+
+  return (
+    <input
+      autoFocus
+      value={name}
+      onChange={(e) => setName(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") commit();
+        else if (e.key === "Escape") {
+          setName("");
+          setEditing(false);
+        }
+      }}
+      onBlur={commit}
+      placeholder="Name + Enter"
+      className="rounded-full border-2 border-fuchsia-500 bg-white dark:bg-slate-900 text-xs font-bold text-slate-800 dark:text-slate-100 px-3 py-0.5 w-32 focus:outline-none"
+    />
   );
 }
 
