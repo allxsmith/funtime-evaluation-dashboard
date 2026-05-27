@@ -9,6 +9,7 @@ import {
 import type { PersistedState } from "../types";
 import { DEFAULT_PALETTE, contrastText } from "../utils/colors";
 import { getScore } from "../utils/scoring";
+import { migrateV1ToV2 } from "../data/migrate";
 
 const SUB_TABS = [
   { id: "welcome", label: "Welcome" },
@@ -158,6 +159,54 @@ function WelcomeSettings() {
           onChange={(e) =>
             updateConfig({
               presenterDurationSeconds: Math.max(30, Number(e.target.value) || 0),
+            })
+          }
+        />
+      </Field>
+      <div className="flex flex-wrap gap-3">
+        <Field label="Min weight">
+          <input
+            type="number"
+            min={0}
+            step={1}
+            className={inputCls}
+            value={config.weightMin}
+            onChange={(e) => {
+              const v = Math.max(0, Number(e.target.value) || 0);
+              updateConfig({
+                weightMin: Math.min(v, config.weightMax),
+              });
+            }}
+          />
+        </Field>
+        <Field label="Max weight">
+          <input
+            type="number"
+            min={1}
+            step={1}
+            className={inputCls}
+            value={config.weightMax}
+            onChange={(e) => {
+              const v = Math.max(1, Number(e.target.value) || 1);
+              updateConfig({
+                weightMax: Math.max(v, config.weightMin),
+              });
+            }}
+          />
+        </Field>
+      </div>
+      <Field
+        label={`Auto-play interval (seconds) — currently ${config.autoPlayIntervalSeconds}s`}
+      >
+        <input
+          type="number"
+          min={1}
+          step={1}
+          className={inputCls}
+          value={config.autoPlayIntervalSeconds}
+          onChange={(e) =>
+            updateConfig({
+              autoPlayIntervalSeconds: Math.max(1, Number(e.target.value) || 1),
             })
           }
         />
@@ -491,67 +540,184 @@ function TracksSettings() {
 
 // ─── Sections ─────────────────────────────────────────────────────────
 
+const numCls =
+  "w-16 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-2 py-1 text-sm";
+
 function SectionsSettings() {
+  const config = useEvaluationStore((s) => s.config);
   const tracks = useEvaluationStore((s) => s.tracks);
   const sections = useEvaluationStore((s) => s.sections);
+  const subSections = useEvaluationStore((s) => s.subSections);
   const addSection = useEvaluationStore((s) => s.addSection);
   const updateSection = useEvaluationStore((s) => s.updateSection);
   const deleteSection = useEvaluationStore((s) => s.deleteSection);
-  const [newNameByTrack, setNewNameByTrack] = useState<Record<string, string>>(
-    {},
-  );
+  const addSubSection = useEvaluationStore((s) => s.addSubSection);
+  const updateSubSection = useEvaluationStore((s) => s.updateSubSection);
+  const deleteSubSection = useEvaluationStore((s) => s.deleteSubSection);
+  const [newSectionByTrack, setNewSectionByTrack] = useState<
+    Record<string, string>
+  >({});
+  const [newSubBySection, setNewSubBySection] = useState<
+    Record<string, string>
+  >({});
 
   const sectionsById = Object.fromEntries(sections.map((s) => [s.id, s]));
+  const subById = Object.fromEntries(subSections.map((s) => [s.id, s]));
 
   return (
     <div className="space-y-6">
       <SectionHeader
-        title="Sections & weights"
-        description="Scoring categories per track. Weight multiplies the raw score for weighted totals."
+        title="Sections & sub-sections"
+        description="Sections group the scored sub-sections. Each sub-section has a weight and a point range (min–max)."
       />
       {tracks.map((track) => (
         <section key={track.id}>
-          <h4 className="font-extrabold text-slate-800 dark:text-slate-100 mb-2">{track.name}</h4>
-          <div className="space-y-2 mb-3">
-            {track.sectionIds.map((sid) => {
-              const sec = sectionsById[sid];
+          <h4 className="font-extrabold text-slate-800 dark:text-slate-100 mb-2">
+            {track.name}
+          </h4>
+          <div className="space-y-3 mb-3">
+            {track.sectionIds.map((secId) => {
+              const sec = sectionsById[secId];
               if (!sec) return null;
               return (
                 <div
-                  key={sid}
-                  className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2"
+                  key={secId}
+                  className="rounded-xl border border-slate-200 dark:border-slate-700 p-3"
                 >
-                  <input
-                    className="flex-1 bg-transparent font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 rounded px-2 py-1"
-                    value={sec.name}
-                    onChange={(e) =>
-                      updateSection(sid, { name: e.target.value })
-                    }
-                  />
-                  <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                    weight
+                  <div className="flex items-center gap-2 mb-2">
                     <input
-                      type="number"
-                      min={0}
-                      step={0.5}
-                      className="w-20 rounded border border-slate-300 dark:border-slate-700 px-2 py-1 text-sm"
-                      value={sec.weight}
+                      className="flex-1 bg-transparent font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 rounded px-2 py-1"
+                      value={sec.name}
                       onChange={(e) =>
-                        updateSection(sid, {
-                          weight: Math.max(0, Number(e.target.value) || 0),
-                        })
+                        updateSection(secId, { name: e.target.value })
                       }
                     />
-                  </label>
-                  <button
-                    onClick={() => {
-                      if (confirm(`Delete section "${sec.name}"?`))
-                        deleteSection(sid);
-                    }}
-                    className={dangerBtnCls}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                    <button
+                      onClick={() => {
+                        if (
+                          confirm(
+                            `Delete section "${sec.name}" and its sub-sections?`,
+                          )
+                        )
+                          deleteSection(secId);
+                      }}
+                      className={dangerBtnCls}
+                      aria-label="Delete section"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {sec.subSectionIds.map((subId) => {
+                      const sub = subById[subId];
+                      if (!sub) return null;
+                      return (
+                        <div
+                          key={subId}
+                          className="flex flex-wrap items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2"
+                        >
+                          <input
+                            className="flex-1 min-w-[160px] bg-transparent font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 rounded px-2 py-1"
+                            value={sub.name}
+                            onChange={(e) =>
+                              updateSubSection(subId, { name: e.target.value })
+                            }
+                          />
+                          <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                            weight
+                            <input
+                              type="number"
+                              min={config.weightMin}
+                              max={config.weightMax}
+                              step={1}
+                              className={numCls}
+                              value={sub.weight}
+                              onChange={(e) => {
+                                const v = Number(e.target.value);
+                                const clamped = Math.max(
+                                  config.weightMin,
+                                  Math.min(config.weightMax, v),
+                                );
+                                updateSubSection(subId, { weight: clamped });
+                              }}
+                            />
+                          </label>
+                          <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                            min
+                            <input
+                              type="number"
+                              min={1}
+                              step={1}
+                              className={numCls + " w-14"}
+                              value={sub.minPoints}
+                              onChange={(e) =>
+                                updateSubSection(subId, {
+                                  minPoints: Number(e.target.value),
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                            max
+                            <input
+                              type="number"
+                              min={1}
+                              step={1}
+                              className={numCls + " w-14"}
+                              value={sub.maxPoints}
+                              onChange={(e) =>
+                                updateSubSection(subId, {
+                                  maxPoints: Number(e.target.value),
+                                })
+                              }
+                            />
+                          </label>
+                          <button
+                            onClick={() => {
+                              if (
+                                confirm(`Delete sub-section "${sub.name}"?`)
+                              )
+                                deleteSubSection(subId);
+                            }}
+                            className={dangerBtnCls}
+                            aria-label="Delete sub-section"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {sec.subSectionIds.length === 0 && (
+                      <p className="text-xs italic text-slate-400 dark:text-slate-500 px-1">
+                        No sub-sections yet.
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2 max-w-md mt-2">
+                    <input
+                      className={inputCls}
+                      value={newSubBySection[secId] ?? ""}
+                      onChange={(e) =>
+                        setNewSubBySection((p) => ({
+                          ...p,
+                          [secId]: e.target.value,
+                        }))
+                      }
+                      placeholder={`New sub-section for ${sec.name}`}
+                    />
+                    <button
+                      onClick={() => {
+                        const n = (newSubBySection[secId] ?? "").trim();
+                        if (!n) return;
+                        addSubSection(secId, n);
+                        setNewSubBySection((p) => ({ ...p, [secId]: "" }));
+                      }}
+                      className={btnCls}
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -559,9 +725,9 @@ function SectionsSettings() {
           <div className="flex gap-2 max-w-md">
             <input
               className={inputCls}
-              value={newNameByTrack[track.id] ?? ""}
+              value={newSectionByTrack[track.id] ?? ""}
               onChange={(e) =>
-                setNewNameByTrack((p) => ({
+                setNewSectionByTrack((p) => ({
                   ...p,
                   [track.id]: e.target.value,
                 }))
@@ -570,15 +736,15 @@ function SectionsSettings() {
             />
             <button
               onClick={() => {
-                const n = (newNameByTrack[track.id] ?? "").trim();
+                const n = (newSectionByTrack[track.id] ?? "").trim();
                 if (!n) return;
                 addSection(track.id, n);
-                setNewNameByTrack((p) => ({ ...p, [track.id]: "" }));
+                setNewSectionByTrack((p) => ({ ...p, [track.id]: "" }));
               }}
               className={btnCls}
             >
               <Plus className="w-4 h-4" />
-              Add
+              Add section
             </button>
           </div>
         </section>
@@ -710,6 +876,7 @@ function ScoresSettings() {
   const items = useEvaluationStore((s) => s.items);
   const tracks = useEvaluationStore((s) => s.tracks);
   const sections = useEvaluationStore((s) => s.sections);
+  const subSections = useEvaluationStore((s) => s.subSections);
   const evaluators = useEvaluationStore((s) => s.evaluators);
   const scores = useEvaluationStore((s) => s.scores);
   const setScore = useEvaluationStore((s) => s.setScore);
@@ -723,12 +890,13 @@ function ScoresSettings() {
   const track = tracks.find((t) => t.id === item?.trackId);
   const presenter = evaluators.find((e) => e.id === item?.presenterId);
   const sectionsById = Object.fromEntries(sections.map((s) => [s.id, s]));
+  const subById = Object.fromEntries(subSections.map((s) => [s.id, s]));
 
   return (
     <div>
       <SectionHeader
         title="Scores"
-        description="Enter a score (1–5) per item per section. Leave blank for no score."
+        description="Enter a score per sub-section, within its point range. Leave blank for no score."
       />
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <label className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -763,42 +931,66 @@ function ScoresSettings() {
       </div>
 
       {item && track ? (
-        <div className="space-y-2 max-w-2xl">
-          {track.sectionIds.map((sid) => {
-            const sec = sectionsById[sid];
+        <div className="space-y-4 max-w-2xl">
+          {track.sectionIds.map((secId) => {
+            const sec = sectionsById[secId];
             if (!sec) return null;
-            const value = getScore(scores, item.id, sid);
             return (
-              <div
-                key={sid}
-                className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2"
-              >
-                <span className="flex-1 font-medium text-slate-800 dark:text-slate-100">
+              <div key={secId}>
+                <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1.5">
                   {sec.name}
-                </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400">w={sec.weight}</span>
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <button
-                      key={n}
-                      onClick={() => setScore(item.id, sid, n)}
-                      className={`w-8 h-8 rounded font-bold text-sm transition ${
-                        value === n
-                          ? "bg-fuchsia-600 text-white"
-                          : "bg-white border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800"
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                  {value > 0 && (
-                    <button
-                      onClick={() => clearScore(item.id, sid)}
-                      className="ml-1 rounded p-1 text-slate-400 dark:text-slate-500 hover:bg-slate-200"
-                      aria-label="Clear"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                </h4>
+                <div className="space-y-2">
+                  {sec.subSectionIds.map((subId) => {
+                    const sub = subById[subId];
+                    if (!sub) return null;
+                    const value = getScore(scores, item.id, subId);
+                    const range: number[] = [];
+                    for (let n = sub.minPoints; n <= sub.maxPoints; n++)
+                      range.push(n);
+                    return (
+                      <div
+                        key={subId}
+                        className="flex flex-wrap items-center gap-3 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2"
+                      >
+                        <span className="flex-1 min-w-[140px] font-medium text-slate-800 dark:text-slate-100">
+                          {sub.name}
+                        </span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                          w={sub.weight} · {sub.minPoints}–{sub.maxPoints}
+                        </span>
+                        <div className="flex flex-wrap items-center gap-1">
+                          {range.map((n) => (
+                            <button
+                              key={n}
+                              onClick={() => setScore(item.id, subId, n)}
+                              className={`w-8 h-8 rounded font-bold text-sm transition ${
+                                value === n
+                                  ? "bg-fuchsia-600 text-white"
+                                  : "bg-white border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800"
+                              }`}
+                            >
+                              {n}
+                            </button>
+                          ))}
+                          <button
+                            onClick={() => clearScore(item.id, subId)}
+                            className={`ml-1 rounded p-1 text-slate-400 dark:text-slate-500 hover:bg-slate-200 ${
+                              value > 0 ? "" : "invisible pointer-events-none"
+                            }`}
+                            aria-label="Clear"
+                            tabIndex={value > 0 ? 0 : -1}
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {sec.subSectionIds.length === 0 && (
+                    <p className="text-xs italic text-slate-400 dark:text-slate-500">
+                      No sub-sections in this section.
+                    </p>
                   )}
                 </div>
               </div>
@@ -826,10 +1018,11 @@ function DataSettings() {
   const currentJson = () => {
     const state = useEvaluationStore.getState();
     const data: PersistedState = {
-      version: 1,
+      version: 2,
       config: state.config,
       tracks: state.tracks,
       sections: state.sections,
+      subSections: state.subSections,
       evaluators: state.evaluators,
       items: state.items,
       scores: state.scores,
@@ -865,21 +1058,32 @@ function DataSettings() {
   const validateAndImport = (text: string, source: string) => {
     try {
       const parsed = JSON.parse(text);
-      if (
-        typeof parsed !== "object" ||
-        !parsed ||
-        parsed.version !== 1 ||
-        !Array.isArray(parsed.tracks) ||
-        !Array.isArray(parsed.sections) ||
-        !Array.isArray(parsed.evaluators) ||
-        !Array.isArray(parsed.items) ||
-        typeof parsed.config !== "object" ||
-        typeof parsed.scores !== "object"
-      ) {
+      const baseValid =
+        typeof parsed === "object" &&
+        !!parsed &&
+        (parsed.version === 1 || parsed.version === 2) &&
+        Array.isArray(parsed.tracks) &&
+        Array.isArray(parsed.sections) &&
+        Array.isArray(parsed.evaluators) &&
+        Array.isArray(parsed.items) &&
+        typeof parsed.config === "object" &&
+        typeof parsed.scores === "object";
+      if (!baseValid) {
         setError(`That ${source} doesn't look like a valid Funtime export.`);
         return;
       }
-      importState(parsed as PersistedState);
+      if (parsed.version === 2 && !Array.isArray(parsed.subSections)) {
+        setError(
+          `That ${source} is a v2 export but is missing "subSections".`,
+        );
+        return;
+      }
+      // v1 exports are migrated to the current sub-section model on import.
+      const data =
+        parsed.version === 1
+          ? migrateV1ToV2(parsed)
+          : (parsed as PersistedState);
+      importState(data);
       setError(null);
       setInfo("Imported successfully.");
       setTimeout(() => setInfo(null), 2500);
@@ -984,15 +1188,16 @@ function DataSettings() {
             JSON shape (for hand-editing)
           </summary>
           <pre className="mt-2 overflow-auto bg-slate-50 dark:bg-slate-800 rounded p-3 text-[11px] leading-relaxed">{`{
-  "version": 1,
+  "version": 2,
   "config": { "welcomeTitle": "...", "presenterDurationSeconds": 300, "soundEnabled": true, "theme": "system" },
-  "tracks":     [ { "id": "trk-...", "name": "...", "sectionIds": [...] } ],
-  "sections":   [ { "id": "sec-...", "name": "...", "weight": 1 } ],
-  "evaluators": [ { "id": "ev-...", "name": "...", "color": "#ef4444" } ],
-  "items":      [ { "id": "itm-...", "name": "...", "trackId": "trk-...", "presenterId": "ev-..." } ],
-  "scores":     { "<itemId>::<sectionId>": 1..5 },
-  "attendees":  [ { "id": "att-...", "name": "...", "color": "#3b82f6" } ],
-  "bets":       { "<attendeeId>": { "<trackId>": "<itemId>" } }
+  "tracks":      [ { "id": "trk-...", "name": "...", "sectionIds": [...] } ],
+  "sections":    [ { "id": "sec-...", "name": "...", "subSectionIds": [...] } ],
+  "subSections": [ { "id": "sub-...", "name": "...", "weight": 1, "minPoints": 1, "maxPoints": 5 } ],
+  "evaluators":  [ { "id": "ev-...", "name": "...", "color": "#ef4444" } ],
+  "items":       [ { "id": "itm-...", "name": "...", "trackId": "trk-...", "presenterId": "ev-..." } ],
+  "scores":      { "<itemId>::<subSectionId>": number },
+  "attendees":   [ { "id": "att-...", "name": "...", "color": "#3b82f6" } ],
+  "bets":        { "<attendeeId>": { "<trackId>": "<itemId>" } }
 }`}</pre>
           <p className="mt-2">
             To add a bettor mid-meeting, append a new entry to{" "}

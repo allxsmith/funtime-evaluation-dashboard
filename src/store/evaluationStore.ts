@@ -11,12 +11,14 @@ import type {
   RaceMode,
   ScoreKey,
   Section,
+  SubSection,
   SessionState,
   TabId,
   Track,
 } from "../types";
 import { scoreKey } from "../types";
 import { buildSeed } from "../data/seedData";
+import { migratePersisted } from "../data/migrate";
 
 type PersistedActions = {
   updateConfig: (patch: Partial<AppConfig>) => void;
@@ -26,14 +28,17 @@ type PersistedActions = {
   addSection: (trackId: ID, name: string) => void;
   updateSection: (id: ID, patch: Partial<Section>) => void;
   deleteSection: (id: ID) => void;
+  addSubSection: (sectionId: ID, name: string) => void;
+  updateSubSection: (id: ID, patch: Partial<SubSection>) => void;
+  deleteSubSection: (id: ID) => void;
   addEvaluator: (name: string, color: string) => void;
   updateEvaluator: (id: ID, patch: Partial<Evaluator>) => void;
   deleteEvaluator: (id: ID) => void;
   addItem: (item: Omit<EvalItem, "id">) => void;
   updateItem: (id: ID, patch: Partial<EvalItem>) => void;
   deleteItem: (id: ID) => void;
-  setScore: (itemId: ID, sectionId: ID, value: number) => void;
-  clearScore: (itemId: ID, sectionId: ID) => void;
+  setScore: (itemId: ID, subSectionId: ID, value: number) => void;
+  clearScore: (itemId: ID, subSectionId: ID) => void;
   addAttendee: (name: string, color: string) => void;
   updateAttendee: (id: ID, patch: Partial<Attendee>) => void;
   deleteAttendee: (id: ID) => void;
@@ -72,6 +77,11 @@ export const useEvaluationStore = create<EvaluationStore>()(
           const track = s.tracks.find((t) => t.id === id);
           if (!track) return s;
           const sectionsToRemove = new Set(track.sectionIds);
+          const subSectionsToRemove = new Set(
+            s.sections
+              .filter((sec) => sectionsToRemove.has(sec.id))
+              .flatMap((sec) => sec.subSectionIds),
+          );
           const itemIdsToRemove = new Set(
             s.items.filter((i) => i.trackId === id).map((i) => i.id),
           );
@@ -89,6 +99,9 @@ export const useEvaluationStore = create<EvaluationStore>()(
           return {
             tracks: s.tracks.filter((t) => t.id !== id),
             sections: s.sections.filter((sec) => !sectionsToRemove.has(sec.id)),
+            subSections: s.subSections.filter(
+              (sub) => !subSectionsToRemove.has(sub.id),
+            ),
             items: s.items.filter((i) => i.trackId !== id),
             scores,
             bets,
@@ -99,7 +112,7 @@ export const useEvaluationStore = create<EvaluationStore>()(
         set((s) => {
           const id = newId("sec");
           return {
-            sections: [...s.sections, { id, name, weight: 1 }],
+            sections: [...s.sections, { id, name, subSectionIds: [] }],
             tracks: s.tracks.map((t) =>
               t.id === trackId
                 ? { ...t, sectionIds: [...t.sectionIds, id] }
@@ -117,16 +130,70 @@ export const useEvaluationStore = create<EvaluationStore>()(
 
       deleteSection: (id) =>
         set((s) => {
+          const section = s.sections.find((sec) => sec.id === id);
+          const subIds = new Set(section?.subSectionIds ?? []);
           const scores: Record<ScoreKey, number> = {};
           for (const [k, v] of Object.entries(s.scores)) {
-            const [, sectionId] = k.split("::") as [ID, ID];
-            if (sectionId !== id) scores[k as ScoreKey] = v;
+            const [, subSectionId] = k.split("::") as [ID, ID];
+            if (!subIds.has(subSectionId)) scores[k as ScoreKey] = v;
           }
           return {
             sections: s.sections.filter((sec) => sec.id !== id),
+            subSections: s.subSections.filter((sub) => !subIds.has(sub.id)),
             tracks: s.tracks.map((t) => ({
               ...t,
               sectionIds: t.sectionIds.filter((sid) => sid !== id),
+            })),
+            scores,
+          };
+        }),
+
+      addSubSection: (sectionId, name) =>
+        set((s) => {
+          const id = newId("sub");
+          return {
+            subSections: [
+              ...s.subSections,
+              { id, name, weight: 1, minPoints: 1, maxPoints: 5 },
+            ],
+            sections: s.sections.map((sec) =>
+              sec.id === sectionId
+                ? { ...sec, subSectionIds: [...sec.subSectionIds, id] }
+                : sec,
+            ),
+          };
+        }),
+
+      updateSubSection: (id, patch) =>
+        set((s) => ({
+          subSections: s.subSections.map((sub) => {
+            if (sub.id !== id) return sub;
+            const next = { ...sub, ...patch };
+            const minPoints = Math.max(
+              1,
+              Math.round(Number(next.minPoints) || 1),
+            );
+            const maxPoints = Math.max(
+              minPoints,
+              Math.round(Number(next.maxPoints) || minPoints),
+            );
+            const weight = Math.max(0, Number(next.weight) || 0);
+            return { ...next, minPoints, maxPoints, weight };
+          }),
+        })),
+
+      deleteSubSection: (id) =>
+        set((s) => {
+          const scores: Record<ScoreKey, number> = {};
+          for (const [k, v] of Object.entries(s.scores)) {
+            const [, subSectionId] = k.split("::") as [ID, ID];
+            if (subSectionId !== id) scores[k as ScoreKey] = v;
+          }
+          return {
+            subSections: s.subSections.filter((sub) => sub.id !== id),
+            sections: s.sections.map((sec) => ({
+              ...sec,
+              subSectionIds: sec.subSectionIds.filter((sid) => sid !== id),
             })),
             scores,
           };
@@ -261,10 +328,11 @@ export const useEvaluationStore = create<EvaluationStore>()(
 
       importState: (data) =>
         set(() => ({
-          version: 1,
+          version: 2,
           config: data.config,
           tracks: data.tracks,
           sections: data.sections,
+          subSections: data.subSections ?? [],
           evaluators: data.evaluators,
           items: data.items,
           scores: data.scores,
@@ -276,12 +344,15 @@ export const useEvaluationStore = create<EvaluationStore>()(
     }),
     {
       name: "funtime-eval-v1",
+      version: 2,
       storage: createJSONStorage(() => localStorage),
+      migrate: migratePersisted,
       partialize: (s): PersistedState => ({
         version: s.version,
         config: s.config,
         tracks: s.tracks,
         sections: s.sections,
+        subSections: s.subSections,
         evaluators: s.evaluators,
         items: s.items,
         scores: s.scores,
@@ -298,6 +369,7 @@ export const useEvaluationStore = create<EvaluationStore>()(
             ...current.config,
             ...(p.config ?? {}),
           },
+          subSections: p.subSections ?? current.subSections,
           attendees:
             p.attendees && p.attendees.length > 0
               ? p.attendees

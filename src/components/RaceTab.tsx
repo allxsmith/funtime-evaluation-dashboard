@@ -1,11 +1,16 @@
-import { useMemo } from "react";
-import { Play, RotateCcw, Trophy } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Pause, Play, RotateCcw, Trophy } from "lucide-react";
 import {
   useEvaluationStore,
   useSessionStore,
 } from "../store/evaluationStore";
 import { HorseTrack } from "./HorseTrack";
-import { getScore, rawMax, weightedMax } from "../utils/scoring";
+import {
+  getScore,
+  rawMax,
+  trackSubSectionIds,
+  weightedMax,
+} from "../utils/scoring";
 import { sfx } from "../utils/sounds";
 import { bigCelebrate } from "../utils/confetti";
 import { useShortcut } from "../utils/useShortcut";
@@ -13,9 +18,13 @@ import { useShortcut } from "../utils/useShortcut";
 export function RaceTab() {
   const tracks = useEvaluationStore((s) => s.tracks);
   const sections = useEvaluationStore((s) => s.sections);
+  const subSections = useEvaluationStore((s) => s.subSections);
   const items = useEvaluationStore((s) => s.items);
   const evaluators = useEvaluationStore((s) => s.evaluators);
   const scores = useEvaluationStore((s) => s.scores);
+  const autoPlayIntervalSeconds = useEvaluationStore(
+    (s) => s.config.autoPlayIntervalSeconds,
+  );
   const raceMode = useSessionStore((s) => s.raceMode);
   const setRaceMode = useSessionStore((s) => s.setRaceMode);
   const rawRevealed = useSessionStore((s) => s.rawRevealedByTrack);
@@ -31,6 +40,27 @@ export function RaceTab() {
     () => Object.fromEntries(sections.map((s) => [s.id, s])),
     [sections],
   );
+  const subSectionsById = useMemo(
+    () => Object.fromEntries(subSections.map((s) => [s.id, s])),
+    [subSections],
+  );
+  // Flat, ordered sub-section IDs per track — the race reveals these one at a time.
+  const subIdsByTrack = useMemo(
+    () =>
+      Object.fromEntries(
+        tracks.map((t) => [t.id, trackSubSectionIds(t, sectionsById)]),
+      ),
+    [tracks, sectionsById],
+  );
+  const sectionIdBySubId = useMemo(
+    () =>
+      Object.fromEntries(
+        sections.flatMap((sec) =>
+          sec.subSectionIds.map((id) => [id, sec.id]),
+        ),
+      ),
+    [sections],
+  );
   const evaluatorById = useMemo(
     () => Object.fromEntries(evaluators.map((e) => [e.id, e])),
     [evaluators],
@@ -39,60 +69,99 @@ export function RaceTab() {
   const mode = raceMode ?? "raw";
   const revealedByTrack = mode === "raw" ? rawRevealed : weightedRevealed;
 
+  // Per-track auto-play. Component-local so it resets when leaving the tab.
+  const [autoByTrack, setAutoByTrack] = useState<Record<string, boolean>>({});
+
+  // Reset auto-play when switching between raw and weighted modes.
+  useEffect(() => {
+    setAutoByTrack({});
+  }, [mode]);
+
+  // Spawn one setInterval per track with auto-play enabled. Auto-stops when
+  // the track is fully revealed.
+  useEffect(() => {
+    const timers: number[] = [];
+    for (const t of tracks) {
+      if (!autoByTrack[t.id]) continue;
+      const subs = subIdsByTrack[t.id] ?? [];
+      const total = subs.length;
+      const revealed = revealedByTrack[t.id] ?? 0;
+      if (revealed >= total) {
+        setAutoByTrack((p) => ({ ...p, [t.id]: false }));
+        continue;
+      }
+      const id = window.setInterval(() => {
+        revealNextSection(mode, t.id, total);
+        sfx.reveal();
+      }, Math.max(1, autoPlayIntervalSeconds) * 1000);
+      timers.push(id);
+    }
+    return () => {
+      for (const id of timers) window.clearInterval(id);
+    };
+  }, [
+    autoByTrack,
+    mode,
+    revealedByTrack,
+    subIdsByTrack,
+    tracks,
+    autoPlayIntervalSeconds,
+    revealNextSection,
+  ]);
+
   function revealedCountForTrack(trackId: string): number {
     return revealedByTrack[trackId] ?? 0;
   }
 
-  function positionPctForItem(
-    item: { id: string; trackId: string },
-    track: { sectionIds: string[] },
-  ): { pct: number; earned: number; max: number } {
-    const n = Math.min(
-      revealedCountForTrack(item.trackId),
-      track.sectionIds.length,
-    );
+  function positionPctForItem(item: {
+    id: string;
+    trackId: string;
+  }): { pct: number; earned: number; max: number } {
+    const subIds = subIdsByTrack[item.trackId] ?? [];
+    const n = Math.min(revealedCountForTrack(item.trackId), subIds.length);
     let earned = 0;
     for (let i = 0; i < n; i++) {
-      const sid = track.sectionIds[i];
-      const score = getScore(scores, item.id, sid);
+      const id = subIds[i];
+      const score = getScore(scores, item.id, id);
       earned +=
-        mode === "raw" ? score : score * (sectionsById[sid]?.weight ?? 1);
+        mode === "raw" ? score : score * (subSectionsById[id]?.weight ?? 1);
     }
     const max =
       mode === "raw"
-        ? rawMax(track.sectionIds)
-        : weightedMax(track.sectionIds, sectionsById);
+        ? rawMax(subIds, subSectionsById)
+        : weightedMax(subIds, subSectionsById);
     return { pct: max === 0 ? 0 : (earned / max) * 100, earned, max };
   }
 
-  function currentSectionForTrack(track: {
-    id: string;
-    sectionIds: string[];
-  }) {
+  function currentSectionForTrack(track: { id: string }) {
+    const subIds = subIdsByTrack[track.id] ?? [];
     const n = revealedCountForTrack(track.id);
-    if (n >= track.sectionIds.length) return null;
-    const sid = track.sectionIds[n];
+    if (n >= subIds.length) return null;
+    const subId = subIds[n];
+    const parentId = sectionIdBySubId[subId];
     return {
       sectionIdx: n,
-      sectionName: sectionsById[sid]?.name ?? "",
-      sectionTotal: track.sectionIds.length,
+      subSectionName: subSectionsById[subId]?.name ?? "",
+      parentName: parentId ? (sectionsById[parentId]?.name ?? "") : "",
+      sectionTotal: subIds.length,
     };
   }
 
   const everyoneDone = tracks.every(
-    (t) => revealedCountForTrack(t.id) >= t.sectionIds.length,
+    (t) => revealedCountForTrack(t.id) >= (subIdsByTrack[t.id]?.length ?? 0),
   );
 
-  // Spacebar reveals the next section of the first track that still has
-  // remaining sections (Formatters first, then Linters).
+  // Spacebar reveals the next sub-section of the first track that still has
+  // remaining sub-sections (Formatters first, then Linters).
   useShortcut(
     " ",
     () => {
       if (raceMode === null) return;
       for (const t of tracks) {
+        const total = subIdsByTrack[t.id]?.length ?? 0;
         const n = revealedCountForTrack(t.id);
-        if (n < t.sectionIds.length) {
-          revealNextSection(mode, t.id, t.sectionIds.length);
+        if (n < total) {
+          revealNextSection(mode, t.id, total);
           sfx.reveal();
           return;
         }
@@ -206,9 +275,10 @@ export function RaceTab() {
       {/* Per-track section */}
       {tracks.map((track) => {
         const trackItems = items.filter((i) => i.trackId === track.id);
+        const subIds = subIdsByTrack[track.id] ?? [];
         const current = currentSectionForTrack(track);
         const revealedN = revealedCountForTrack(track.id);
-        const trackDone = revealedN >= track.sectionIds.length;
+        const trackDone = revealedN >= subIds.length;
 
         return (
           <section
@@ -247,16 +317,19 @@ export function RaceTab() {
                   {current ? (
                     <p className="text-sm opacity-95 mt-0.5">
                       <span className="opacity-80">
-                        Section {current.sectionIdx + 1} of{" "}
-                        {current.sectionTotal} ·{" "}
+                        {current.sectionIdx + 1} of {current.sectionTotal}
+                        {current.parentName
+                          ? ` · ${current.parentName}`
+                          : ""}{" "}
+                        ·{" "}
                       </span>
                       <strong className="text-amber-200">
-                        {current.sectionName}
+                        {current.subSectionName}
                       </strong>
                     </p>
                   ) : (
                     <p className="text-sm opacity-95 mt-0.5">
-                      All {track.sectionIds.length} sections revealed.
+                      All {subIds.length} sub-sections revealed.
                     </p>
                   )}
                 </div>
@@ -265,25 +338,41 @@ export function RaceTab() {
                     <>
                       <button
                         onClick={() => {
-                          revealNextSection(
-                            mode,
-                            track.id,
-                            track.sectionIds.length,
-                          );
+                          revealNextSection(mode, track.id, subIds.length);
                           sfx.reveal();
                         }}
                         className="inline-flex items-center gap-2 rounded-full bg-white text-pink-700 font-bold px-4 py-2 shadow-md hover:scale-105 transition"
-                        title={`Reveal next section for ${track.name}`}
+                        title={`Reveal next sub-section for ${track.name}`}
                       >
                         💦 Reveal next
                       </button>
                       <button
+                        onClick={() =>
+                          setAutoByTrack((p) => ({
+                            ...p,
+                            [track.id]: !p[track.id],
+                          }))
+                        }
+                        className="inline-flex items-center gap-2 rounded-full bg-white/15 hover:bg-white/25 text-white font-semibold px-3 py-2 text-sm"
+                        title={
+                          autoByTrack[track.id]
+                            ? `Pause auto-play for ${track.name}`
+                            : `Auto-play ${track.name} every ${autoPlayIntervalSeconds}s`
+                        }
+                      >
+                        {autoByTrack[track.id] ? (
+                          <>
+                            <Pause className="w-4 h-4" /> Pause
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-4 h-4" /> Auto play
+                          </>
+                        )}
+                      </button>
+                      <button
                         onClick={() => {
-                          revealAllSections(
-                            mode,
-                            track.id,
-                            track.sectionIds.length,
-                          );
+                          revealAllSections(mode, track.id, subIds.length);
                           sfx.swoosh();
                         }}
                         className="inline-flex items-center gap-2 rounded-full bg-white/15 hover:bg-white/25 text-white font-semibold px-3 py-2 text-sm"
@@ -313,7 +402,7 @@ export function RaceTab() {
             {/* Lanes */}
             <div className="bg-white dark:bg-slate-800 p-5 dark:ring-1 dark:ring-slate-700">
               <div className="mb-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-                {revealedN}/{track.sectionIds.length} sections revealed
+                {revealedN}/{subIds.length} sub-sections revealed
               </div>
               <div className="space-y-3">
                 {(() => {
@@ -321,7 +410,7 @@ export function RaceTab() {
                   // current leader and slide the finish line there.
                   const rows = trackItems.map((item) => ({
                     item,
-                    ...positionPctForItem(item, track),
+                    ...positionPctForItem(item),
                   }));
                   const leaderPct = rows.reduce(
                     (mx, r) => (r.pct > mx ? r.pct : mx),

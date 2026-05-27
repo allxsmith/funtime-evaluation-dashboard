@@ -6,10 +6,19 @@ export type Track = {
   sectionIds: ID[];
 };
 
+// A Section is a named grouping; the scored unit is the SubSection.
 export type Section = {
   id: ID;
   name: string;
+  subSectionIds: ID[];
+};
+
+export type SubSection = {
+  id: ID;
+  name: string;
   weight: number;
+  minPoints: number;
+  maxPoints: number;
 };
 
 export type Evaluator = {
@@ -25,6 +34,7 @@ export type EvalItem = {
   presenterId: ID;
 };
 
+// Score keys are `${itemId}::${subSectionId}`.
 export type ScoreKey = `${ID}::${ID}`;
 export type Scores = Record<ScoreKey, number>;
 
@@ -45,13 +55,17 @@ export type AppConfig = {
   presenterDurationSeconds: number;
   soundEnabled: boolean;
   theme: ThemeMode;
+  weightMin: number;
+  weightMax: number;
+  autoPlayIntervalSeconds: number;
 };
 
 export type PersistedState = {
-  version: 1;
+  version: 2;
   config: AppConfig;
   tracks: Track[];
   sections: Section[];
+  subSections: SubSection[];
   evaluators: Evaluator[];
   items: EvalItem[];
   scores: Scores;
@@ -74,5 +88,5 @@ export type SessionState = {
   weightedRevealedByTrack: Record<ID, number>;
 };
 
-export const scoreKey = (itemId: ID, sectionId: ID): ScoreKey =>
-  `${itemId}::${sectionId}` as ScoreKey;
+export const scoreKey = (itemId: ID, subSectionId: ID): ScoreKey =>
+  `${itemId}::${subSectionId}` as ScoreKey;
